@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beedaht Sweet Treats | Nigerian Bakery & Cafe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   <link rel="stylesheet" href="./STYLE/style.css">
+   <style>
+    
+        /*Color Palette */
+        :root {
+            --primary: #FFB88C;
+            --primary-light: #FFE3D5;
+            --primary-dark: #E08A5A;
+            --primary-darker: #F79F72;
+            --neutral-white: #FFFFFF;
+            --neutral-light: #F7F7F7;
+            --neutral-medium: #EEEEEE;
+            --neutral-dark: #E2E2E2;
+            --text-dark: #1F1F1F;
+            --text-medium: #555555;
+            --text-light: #8A8A8A;
+            --accent-dark: #7A4E44;
+            --accent-medium: #BCA39D;
+            --accent-darker: #55352D;
+            --success: #4CAF50;
+            --warning: #FB8C00;
+            --error: #E53935;
+            --info: #42A5F5;
+            --shadow: 0 4px 15px rgba(0,0,0,0.08);
+            --radius: 16px;
+            --transition: all 0.3s ease;
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background-color: var(--neutral-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-title h2:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .section-title p {
+            color: var(--text-medium);
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: var(--primary);
+            color: var(--text-dark);
+            padding: 12px 32px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(255, 184, 140, 0.3);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(255, 184, 140, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: var(--accent-medium);
+            color: var(--neutral-white);
+            box-shadow: 0 4px 10px rgba(188, 163, 157, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--accent-dark);
+            box-shadow: 0 6px 15px rgba(188, 163, 157, 0.4);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary);
+            color: var(--text-dark);
+        }
+
+        /* Header & Navigation */
+        header {
+            background-color: var(--neutral-white);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-right: 10px;
+        }
+
+        .logo-text {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        nav ul li {
+            margin-left: 30px;
+            position: relative;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: var(--transition);
+            padding: 8px 0;
+            position: relative;
+        }
+
+        nav ul li a:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: var(--transition);
+        }
+
+        nav ul li a:hover {
+            color: var(--primary);
+        }
+
+        nav ul li a:hover:after {
+            width: 100%;
+        }
+
+        .nav-icons {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-icon {
+            font-size: 1.3rem;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .nav-icon:hover {
+            color: var(--primary);
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--primary);
+            color: var(--text-dark);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        .hero {
+             background: linear-gradient(135deg, rgba(31,31,31,0.85) 0%, rgba(255,184,140,0.8) 100%), url('https://images.unsplash.com/photo-1568254183919-78a4f43a2877?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-position: center;
+            color: var(--neutral-white);
+            padding: 120px 0;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Categories Section */
+        .categories {
+            background-color: var(--neutral-white);
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .category-card {
+            background-color: var(--neutral-white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            text-align: center;
+            padding: 30px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--accent-medium));
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .category-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .category-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .category-card p {
+            color: var(--text-medium);
+            margin-bottom: 20px;
+        }
+
+        /* Products Section */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .product-card {
+            background-color: var(--neutral-white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+
+        .product-img {
+            height: 200px;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 20px;
+        }
+
+        .product-category {
+            display: inline-block;
+            background-color: var(--neutral-medium);
+            color: var(--text-medium);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+
+        .product-info h3 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+            color: var(--text-dark);
+        }
+
+        .product-info p {
+            color: var(--text-medium);
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+
+        .product-price {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            
+        }
+
+        .price {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: var(--primary);
+        }
+
+        /* Quick Order Section */
+        .quick-order {
+            background-color: var(--neutral-medium);
+        }
+
+        .order-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .order-option {
+            background: var(--neutral-white);
+            padding: 40px 30px;
+            border-radius: var(--radius);
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .order-option:hover {
+            transform: translateY(-5px);
+        }
+
+        .order-option i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .order-option h3 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .order-option p {
+            color: var(--text-medium);
+            margin-bottom: 25px;
+        }
+
+        /* Food Combos Section */
+        .food-combos {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--neutral-white) 100%);
+        }
+
+        .combos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .combo-card {
+            background: var(--neutral-white);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .combo-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .combo-img {
+            height: 200px;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .combo-info {
+            padding: 25px;
+        }
+
+        .combo-info h3 {
+            margin-bottom: 15px;
+            color: var(--text-dark);
+            font-size: 1.4rem;
+        }
+
+        .combo-items {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .combo-items li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--neutral-medium);
+            color: var(--text-medium);
+        }
+
+        .combo-items li:last-child {
+            border-bottom: none;
+        }
+
+        .combo-items li:before {
+            content: '✓';
+            color: var(--success);
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Advanced Shopping Page Styles */
+        .shop-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            padding: 60px 0;
+            text-align: center;
+            color: var(--text-dark);
+        }
+
+        .filters-sidebar {
+            background: var(--neutral-white);
+            border-radius: var(--radius);
+            padding: 25px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .filter-group {
+            margin-bottom: 25px;
+        }
+
+        .filter-group h3 {
+            margin-bottom: 15px;
+            color: var(--text-dark);
+            font-size: 1.2rem;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-option {
+            background: var(--neutral-medium);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .filter-option.active {
+            background: var(--primary);
+            color: var(--text-dark);
+        }
+
+        .filter-option:hover {
+            background: var(--primary-light);
+            color: var(--text-dark);
+        }
+
+        .shop-content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+        }
+
+        .products-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .sort-options select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--neutral-medium);
+            background: var(--neutral-white);
+            color: var(--text-dark);
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--accent-darker);
+            color: var(--neutral-white);
+            padding: 70px 0 30px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-column h3 {
+            margin-bottom: 25px;
+            font-size: 1.3rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .footer-column h3:after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background: var(--primary);
+        }
+
+        .footer-column ul {
+            list-style: none;
+        }
+
+        .footer-column ul li {
+            margin-bottom: 12px;
+        }
+
+        .footer-column ul li a {
+            color: var(--neutral-medium);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .footer-column ul li a:hover {
+            color: var(--neutral-white);
+            padding-left: 5px;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .social-links a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            color: var(--neutral-white);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .social-links a:hover {
+            background-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .newsletter p {
+            margin-bottom: 15px;
+            color: var(--neutral-medium);
+        }
+
+        .newsletter-form {
+            display: flex;
+            margin-top: 15px;
+        }
+
+        .newsletter-form input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 30px 0 0 30px;
+            outline: none;
+        }
+
+        .newsletter-form button {
+            background-color: var(--primary);
+            color: var(--text-dark);
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 30px 30px 0;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .newsletter-form button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: var(--neutral-medium);
+            font-size: 0.9rem;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal-content {
+            background-color: var(--neutral-white);
+            margin: 50px auto;
+            width: 90%;
+            max-width: 900px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            animation: modalAppear 0.4s ease;
+        }
+
+        @keyframes modalAppear {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--neutral-medium);
+        }
+
+        .close-modal {
+            font-size: 1.8rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-medium);
+            transition: var(--transition);
+        }
+
+        .close-modal:hover {
+            color: var(--text-dark);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .modal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cart Styles */
+        .cart-modal {
+            max-width: 500px;
+        }
+
+        .cart-items {
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--neutral-medium);
+            transition: var(--transition);
+        }
+
+        .cart-item:hover {
+            background-color: var(--neutral-light);
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item-info h4 {
+            margin-bottom: 5px;
+        }
+
+        .cart-item-details {
+            font-size: 0.9rem;
+            color: var(--text-medium);
+        }
+
+        .cart-item-price {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .cart-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quantity-btn {
+            background: none;
+            border: 1px solid var(--neutral-medium);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .quantity-btn:hover {
+            background-color: var(--neutral-medium);
+        }
+
+        .remove-item {
+            color: var(--error);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .cart-total {
+            text-align: right;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-top: 20px;
+            border-top: 2px solid var(--neutral-medium);
+        }
+
+        .cart-empty {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-medium);
+        }
+
+        .cart-empty i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: var(--neutral-medium);
+        }
+
+        /* Checkout Form */
+        .checkout-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid var(--neutral-dark);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 184, 140, 0.2);
+        }
+
+        .form-row {
+            grid-column: 1 / -1;
+        }
+
+        /* Payment Options */
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .payment-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid var(--neutral-medium);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .payment-option:hover {
+            border-color: var(--primary);
+        }
+
+        .payment-option.selected {
+            border-color: var(--primary);
+            background-color: var(--primary-light);
+        }
+
+        .payment-option input {
+            margin-right: 10px;
+        }
+
+        .payment-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+            color: var(--primary);
+        }
+
+        /* Add-ons Section */
+        .add-ons {
+            margin: 20px 0;
+        }
+
+        .add-on-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--neutral-medium);
+        }
+
+        .add-on-option:last-child {
+            border-bottom: none;
+        }
+
+        .add-on-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .add-on-info input {
+            margin-right: 10px;
+        }
+
+        .add-on-price {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Quantity Selector */
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+
+        .quantity-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--neutral-medium);
+            background: var(--neutral-white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .quantity-btn:hover {
+            background: var(--neutral-medium);
+        }
+
+        .quantity-display {
+            margin: 0 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background-color: var(--success);
+            color: white;
+            padding: 15px 25px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 3000;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background-color: var(--error);
+        }
+
+        .notification.warning {
+            background-color: var(--warning);
+        }
+
+        .notification.info {
+            background-color: var(--primary);
+        }
+
+        /* Button click animation */
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .shop-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters-sidebar {
+                order: 2;
+            }
+            
+            .products-container {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            nav {
+                position: fixed;
+                top: 80px;
+                left: 0;
+                width: 100%;
+                background-color: var(--neutral-white);
+                box-shadow: var(--shadow);
+                padding: 20px;
+                transform: translateY(-100%);
+                opacity: 0;
+                visibility: hidden;
+                transition: var(--transition);
+            }
+            
+            nav.active {
+                transform: translateY(0);
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            nav ul {
+                flex-direction: column;
+            }
+            
+            nav ul li {
+                margin: 0 0 15px 0;
+            }
+            
+            .hero h1 {
+                font-size: 2.3rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .checkout-form {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 20px auto;
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+            
+        .modal-body > div {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .modal-image {
+            width: 100%;
+            border-radius: var(--radius);
+        }
+
+        .products-section-footer {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .advanced-shop-section {
+            padding-top: 40px;
+        }
+
+        @media (max-width: 576px) {
+            .section-title h2 {
+                font-size: 2rem;
+            }
+            
+            .hero {
+                padding: 80px 0;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 250px;
+            }
+            
+            .order-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .products-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .cart-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .cart-item-actions {
+                align-self: flex-end;
+            }
+        }
+
+        .btn-full-width {
+            width: 100%;
+        }
+
+        .btn-add-to-cart {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container header-container">
+            <a href="#" class="logo">
+                <div class="logo-icon"><i class="fas fa-cookie-bite"></i></div>
+                <div class="logo-text">Beedaht<span>Treats</span></div>
+            </a>
+            
+            <div class="mobile-menu-btn">
+                <i class="fas fa-bars"></i>
+            </div>
+            
+            <nav>
+                <ul>
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#categories">Categories</a></li>
+                    <li><a href="#products">Products</a></li>
+                    <li><a href="#combos">Food Combos</a></li>
+                    <li><a href="#order">Order</a></li>
+                </ul>
+            </nav>
+            
+            <div class="nav-icons">
+                <div class="nav-icon cart-icon" onclick="toggleCart()">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container hero-content">
+            <h1>Authentic Nigerian Bakery Delights</h1>
+            <p>From Small Chops to Cakes, we bring you the best of Nigerian bakery tradition with modern quality and taste.</p>
+            <div class="hero-buttons">
+                <a href="#products" class="btn">Shop Now</a>
+                <a href="#order" class="btn btn-outline">Quick Order</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section id="categories">
+        <div class="container">
+            <div class="section-title">
+                <h2>Our Categories</h2>
+                <p>Explore our authentic Nigerian bakery categories</p>
+            </div>
+            <div class="categories-grid">
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <h3>Small Chops</h3>
+                    <p>Meat Pies, Puff Puff, Sausage Rolls and party snacks</p>
+                    <a href="#" class="btn btn-outline" onclick="filterProducts('small-chops')">View All</a>
+                </div>
+                
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-birthday-cake"></i>
+                    </div>
+                    <h3>Cakes</h3>
+                    <p>Traditional Nigerian cakes for all occasions</p>
+                    <a href="#" class="btn btn-outline" onclick="filterProducts('cakes')">View All</a>
+                </div>
+                
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-cookie-bite"></i>
+                    </div>
+                    <h3>Cookies & Biscuits</h3>
+                    <p>Coconut, Peanut and traditional Nigerian cookies</p>
+                    <a href="#" class="btn btn-outline" onclick="filterProducts('cookies')">View All</a>
+                </div>
+                
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-pie-chart"></i>
+                    </div>
+                    <h3>Pastries</h3>
+                    <p>Croissants, Cinnamon Rolls, and sweet treats</p>
+                    <a href="#" class="btn btn-outline" onclick="filterProducts('pastries')">View All</a>
+                </div>
+                
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-wine-bottle"></i>
+                    </div>
+                    <h3>Drinks</h3>
+                    <p>Zobo, Chapman, Fresh Juices and more</p>
+                    <a href="#" class="btn btn-outline" onclick="filterProducts('drinks')">View All</a>
+                </div>
+                
+                <div class="category-card">
+                    <div class="category-icon">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <h3>Combos & Packages</h3>
+                    <p>Party packs, Doughnuts combos and special packages</p>
+                    <a href="#combos" class="btn btn-outline">View All</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section id="products">
+        <div class="container">
+            <div class="section-title">
+                <h2>Featured Products</h2>
+                <p>Our most popular Nigerian bakery items</p>
+            </div>
+            <div class="products-grid" id="products-container">
+                <!-- Products will be loaded here by JavaScript -->
+            </div>
+            <div class="products-section-footer">
+                <a href="#advanced-shop" class="btn">Advanced Shopping</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Food Combos Section -->
+    <section id="combos" class="food-combos">
+        <div class="container">
+            <div class="section-title">
+                <h2>Food Combos</h2>
+                <p>Complete meal packages for every taste</p>
+            </div>
+            <div class="combos-grid">
+                <div class="combo-card">
+                   <img src="./IMAGE/JOLLOF COMBO 2.jpg" alt="Jollof Combo" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Jollof Combo</h3>
+                        <ul class="combo-items">
+                            <li>Jollof Rice</li>
+                            <li>Fried Chicken</li>
+                            <li>Plantain</li>
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦5,000</span>
+                            <button class="btn" onclick="openComboModal('Jollof Combo', 5000, './IMAGE/JOLLOF COMBO 2.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="combo-card">
+                    <img src="./IMAGE/FRIED COMBO.jpg" alt="Fried Rice Combo" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Fried Rice Combo</h3>
+                        <ul class="combo-items">
+                            <li>Fried Rice</li>
+                            <li> Chicken</li>
+                            
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦6,000</span>
+                            <button class="btn" onclick="openComboModal('Fried Rice Combo', 6000, './IMAGE/FRIED COMBO.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="combo-card">
+                    <img src="./IMAGE/spag.jpg" alt="Spaghetti" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Spaghetti</h3>
+                        <ul class="combo-items">
+                            <li>Fried Fish</li>
+                            <li>Boiled Egg</li>
+                            
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦4,000</span>
+                            <button class="btn" onclick="openComboModal('Spaghetti', 4000, './IMAGE/SPAG.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="combo-card">
+                    <img src="./IMAGE/EWA AGOYIN.jpg" alt="ewa agoyin" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Ewa Agoyin</h3>
+                        <ul class="combo-items">
+                            <li>Meat</li>
+                            <li> Boiled Egg</li>
+                            
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦1,500</span>
+                            <button class="btn" onclick="openComboModal('Ewa Agoyin', 1500, './IMAGE/EWA AGOYIN.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="combo-card">
+                    <img src="./IMAGE/FOOD TRAY.jpg" alt="food tray Combo" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Food Tray Combo</h3>
+                        <ul class="combo-items">
+                            <li>Jollof Rice</li>
+                            <li>Fried Rice</li>
+                            <li>Spaghetti</li>
+                            <li>Wine</li>
+                            <li>Fruits</li>
+                            <li>Drinks</li>                            
+                            <li>Chicken Sauce</li>
+                            <li>Junks</li>
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦100,000</span>
+                            <button class="btn" onclick="openComboModal('Food Tray Combo', 100000, './IMAGE/FOOD TRAY.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="combo-card">
+                    <img src="./IMAGE/VEG GARNISHED PONMO SAUCE.jpg" alt="ponmo vegetable" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Ponmo Garnished Vegetable</h3>
+                        <ul class="combo-items">
+                            <li>Pepper Ponmo</li>
+                            <li> Vegetable</li>
+                            
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦2,000</span>
+                            <button class="btn" onclick="openComboModal('Ponmo Garnished veg', 2000, './IMAGE/VEG GARNISHED PONMO SAUCE.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="combo-card">
+                    <img src="./IMAGE/SMALL CHOPS COMBO.jpg" alt="Small Chops Combo" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Small Chops Combo</h3>
+                        <ul class="combo-items">
+                            <li>Spring Roll</li>
+                            <li>Puff Puff</li>
+                            <li>Samosa</li>
+                            <li>Meat Kabab</li>
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦5,000</span>
+                            <button class="btn" onclick="openComboModal('Small Chops Combo', 5000, './IMAGE/SMALL CHOPS COMBO.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="combo-card">
+                    <img src="./IMAGE/DOUGHNUT COMBO.jpg" alt="Doughnut Combo" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Doughnut Combo</h3>
+                        <ul class="combo-items">
+                            <li>Snowcap Doughnut</li>
+                            <li>Snowcap Puff Puff</li>
+                            <li>Chocolate Glizing Doughnut</li>
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦3,500</span>
+                            <button class="btn" onclick="openComboModal('Doughnut Combo', 3500, './IMAGE/DOUGHNUT COMBO.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="combo-card">
+                    <img src="./IMAGE/MILKY DOUGHNUT COMBO.jpg" alt="milky doughnut Combo" class="combo-img">
+                    <div class="combo-info">
+                        <h3>Milky Doughnuts Combo</h3>
+                        <ul class="combo-items">
+                            <li>Smoothies</li>
+                            <li>Milky Doughnut</li>
+                            
+                        </ul>
+                        <div class="product-price">
+                            <span class="price">₦8,500</span>
+                            <button class="btn" onclick="openComboModal('Milky Doughnut Combo', 8500, './IMAGE/MILKY DOUGHNUT COMBO.jpg')">View Combo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advanced Shopping Section -->
+    <section id="advanced-shop" class="shop-header">
+        <div class="container">
+            <h2>Advanced Shopping</h2>
+            <p>Filter and find exactly what you're looking for</p>
+        </div>
+    </section>
+    
+    <section class="advanced-shop-section">
+        <div class="container shop-content">
+            <div class="filters-sidebar">
+                <div class="filter-group">
+                    <h3>Categories</h3>
+                    <div class="filter-options">
+                        <button class="filter-option active" onclick="filterProducts('all')">All</button>
+                        <button class="filter-option" onclick="filterProducts('small-chops')">Small Chops</button>
+                        <button class="filter-option" onclick="filterProducts('cakes')">Cakes</button>
+                        <button class="filter-option" onclick="filterProducts('cookies')">Cookies</button>
+                        <button class="filter-option" onclick="filterProducts('pastries')">Pastries</button>
+                        <button class="filter-option" onclick="filterProducts('drinks')">Drinks</button>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <h3>Price Range</h3>
+                    <div class="filter-options">
+                        <button class="filter-option" onclick="filterByPrice('under-2000')">Under ₦2,000</button>
+                        <button class="filter-option" onclick="filterByPrice('2000-5000')">₦2,000 - ₦5,000</button>
+                        <button class="filter-option" onclick="filterByPrice('over-5000')">Over ₦5,000</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="products-container">
+                <div class="products-header">
+                    <h3>All Products</h3>
+                    <div class="sort-options">
+                        <label for="sort-products">Sort by:</label>
+                        <select id="sort-products" onchange="sortProducts()" aria-label="Sort products">
+                            <option value="featured">Featured</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                            <option value="name">Name: A to Z</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="products-grid" id="advanced-products-container">
+                    <!-- Advanced products will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Order Section -->
+    <section id="order" class="quick-order">
+        <div class="container">
+            <div class="section-title">
+                <h2>Quick Order Options</h2>
+                <p>Choose how you'd like to get your treats</p>
+            </div>
+            <div class="order-options">
+                <div class="order-option">
+                    <i class="fas fa-store"></i>
+                    <h3>Store Pickup</h3>
+                    <p>Order online and pick up at our bakery. Fresh and ready when you arrive.</p>
+                    <button class="btn btn-outline" onclick="showOrderModal('pickup')">Order for Pickup</button>
+                </div>
+                
+                <div class="order-option">
+                    <i class="fas fa-truck"></i>
+                    <h3>Home Delivery</h3>
+                    <p>Get your favorites delivered straight to your door. Fast and reliable.</p>
+                    <button class="btn" onclick="showOrderModal('delivery')">Order for Delivery</button>
+                </div>
+                
+                <div class="order-option">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h3>Subscription</h3>
+                    <p>Never run out of treats with our weekly or monthly subscription service.</p>
+                    <button class="btn btn-outline" onclick="showSubscriptionModal()">Subscribe Now</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>Beedaht Treats</h3>
+                    <p>Authentic Nigerian bakery goods made with premium ingredients and traditional techniques.</p>
+                    <div class="social-links">
+                        <a href="#" title="Visit our Facebook page"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" title="Visit our Instagram page"><i class="fab fa-instagram"></i></a>
+                        <a href="#" title="Visit our Twitter page"><i class="fab fa-twitter"></i></a>
+                        <a href="#" title="Contact us on WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </div>
+                <div class="footer-column">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#categories">Categories</a></li>
+                        <li><a href="#products">Products</a></li>
+                        <li><a href="#combos">Food Combos</a></li>
+                        <li><a href="#order">Quick Order</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>Categories</h3>
+                    <ul>
+                        <li><a href="#" onclick="filterCategory('small-chops')">Small Chops</a></li>
+                        <li><a href="#" onclick="filterCategory('cakes')">Cakes</a></li>
+                        <li><a href="#" onclick="filterCategory('cookies')">Cookies & Biscuits</a></li>
+                        <li><a href="#" onclick="filterCategory('pastries')">Pastries</a></li>
+                        <li><a href="#" onclick="filterCategory('drinks')">Drinks</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h3>Contact Us</h3>
+                    <ul>
+                        <li><i class="fas fa-map-marker-alt"></i> 123 Bakery Street, Lagos</li>
+                        <li><i class="fas fa-phone"></i> +234 801 234 5678</li>
+                        <li><i class="fas fa-envelope"></i> orders@beedaht.com</li>
+                        <li><i class="fas fa-clock"></i> Mon-Sat: 8am-8pm, Sun: 10am-6pm</li>
+                    </ul>
+                </div>
+                <div class="footer-column newsletter">
+                    <h3>Newsletter</h3>
+                    <p>Subscribe for updates on new products and special offers.</p>
+                    <div class="newsletter-form">
+                        <input type="email" placeholder="Your email address">
+                        <button type="button" title="Subscribe to newsletter"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2023 Beedaht Sweet Treats. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Product Detail Modal -->
+    <div class="modal" id="product-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-product-name">Product Name</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-grid">
+                    <div>
+                        <img id="modal-product-img" src="" alt="" class="modal-image">
+                    </div>
+                    <div>
+                        <p id="modal-product-description">Product description</p>
+                        <div class="product-price product-price-modal">
+                            <span class="price" id="modal-product-price">₦0</span>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="product-quantity">Quantity</label>
+                            <div class="quantity-selector">
+                                <button class="quantity-btn" onclick="decreaseQuantity()">-</button>
+                                <span class="quantity-display" id="quantity-display">1</span>
+                                <button class="quantity-btn" onclick="increaseQuantity()">+</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Add-ons for food items -->
+                        <div class="add-ons hidden" id="add-ons-section">
+                            <h4>Add Extra Toppings</h4>
+                            <div class="add-on-option">
+                                <div class="add-on-info">
+                                    <input type="checkbox" id="extra-chicken" onchange="updateAddOnPrice()">
+                                    <label for="extra-chicken">Extra Chicken (+₦800)</label>
+                                </div>
+                                <span class="add-on-price">₦800</span>
+                            </div>
+                            <div class="add-on-option">
+                                <div class="add-on-info">
+                                    <input type="checkbox" id="extra-sauce" onchange="updateAddOnPrice()">
+                                    <label for="extra-sauce">Extra Sauce (+₦300)</label>
+                                </div>
+                                <span class="add-on-price">₦300</span>
+                            </div>
+                            <div class="add-on-option">
+                                <div class="add-on-info">
+                                    <input type="checkbox" id="extra-cheese" onchange="updateAddOnPrice()">
+                                    <label for="extra-cheese">Extra Cheese (+₦500)</label>
+                                </div>
+                                <span class="add-on-price">₦500</span>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn btn-add-to-cart" onclick="addToCart()">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Combo Detail Modal -->
+<div class="modal" id="combo-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="combo-modal-name">Combo Name</h2>
+            <button class="close-modal" onclick="closeComboModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-grid">
+                <div>
+                    <img id="combo-modal-img" src="" alt="" class="modal-image">
+                </div>
+                <div>
+                    <div class="product-price" >
+                        <span class="price" id="combo-modal-price">₦0</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="combo-quantity">Quantity</label>
+                        <div class="quantity-selector">
+                            <button class="quantity-btn" onclick="decreaseComboQuantity()">-</button>
+                            <span class="quantity-display" id="combo-quantity-display">1</span>
+                            <button class="quantity-btn" onclick="increaseComboQuantity()">+</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Add-ons for combos -->
+                    <div class="add-ons">
+                        <h4>Add Extra Toppings</h4>
+                        <div id="combo-add-ons">
+                            <!-- Toppings will be dynamically added here based on combo type -->
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-add-to-cart" onclick="addComboToCart()">Add to Cart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+   
+    <!-- Cart Modal -->
+    <div class="modal cart-modal" id="cart-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Your Cart</h2>
+                <button class="close-modal" onclick="toggleCart()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="cart-items" id="cart-items">
+                    <!-- Cart items will be populated here -->
+                </div>
+                <div class="cart-total">
+                    Total: ₦<span id="cart-total">0</span>
+                </div>
+                <button class="btn" onclick="proceedToCheckout()" 
+                >Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal" id="checkout-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Checkout</h2>
+                <button class="close-modal" onclick="closeCheckout()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="checkout-form" class="checkout-form">
+                    <div class="form-group">
+                        <label for="checkout-name">Full Name</label>
+                        <input type="text" id="checkout-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="checkout-email">Email</label>
+                        <input type="email" id="checkout-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="checkout-phone">Phone</label>
+                        <input type="tel" id="checkout-phone" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="checkout-address">Delivery Address</label>
+                        <textarea id="checkout-address" class="form-control" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-group form-row">
+                        <h3>Payment Method</h3>
+                        <div class="payment-options">
+                            <div class="payment-option" onclick="selectPayment('pay-on-delivery')">
+                                <input type="radio" id="pay-on-delivery" name="payment" value="pay-on-delivery">
+                                <div class="payment-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                <div>
+                                    <h4>Pay on Delivery</h4>
+                                    <p>Pay when your order arrives</p>
+                                </div>
+                            </div>
+                            <div class="payment-option" onclick="selectPayment('bank-transfer')">
+                                <input type="radio" id="bank-transfer" name="payment" value="bank-transfer">
+                                <div class="payment-icon"><i class="fas fa-university"></i></div>
+                                <div>
+                                    <h4>Bank Transfer</h4>
+                                    <p>Transfer to our bank account</p>
+                                </div>
+                            </div>
+                            <div class="payment-option" onclick="selectPayment('card')">
+                                <input type="radio" id="card" name="payment" value="card">
+                                <div class="payment-icon"><i class="fas fa-credit-card"></i></div>
+                                <div>
+                                    <h4>Card Payment</h4>
+                                    <p>Pay with your debit/credit card</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group form-row">
+                        <h3>Order Summary</h3>
+                        <div id="checkout-summary">
+                            <!-- Order summary will be populated here -->
+                        </div>
+                        <div class="cart-total">
+                            Total: ₦<span id="checkout-total">0</span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-full-width">Place Order</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Order Modal -->
+    <div class="modal" id="quick-order-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="quick-order-title">Quick Order</h2>
+                <button class="close-modal" onclick="closeQuickOrder()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="quick-order-message">Please select your preferred order method and we'll get back to you shortly.</p>
+                <div class="form-group">
+                    <label for="quick-order-name">Your Name</label>
+                    <input type="text" id="quick-order-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="quick-order-phone">Phone Number</label>
+                    <input type="tel" id="quick-order-phone" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="quick-order-details">Order Details</label>
+                    <textarea id="quick-order-details" class="form-control" rows="4" placeholder="Tell us what you'd like to order..."></textarea>
+                </div>
+                <button class="btn" onclick="submitQuickOrder()" >Submit Order Request</button>
+            </div>
+        </div>
+    </div>
+    <script src="./APP/main.js"></script>
+</body>
+</html>
