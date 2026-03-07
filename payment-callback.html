@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status - Beedaht Sweet Treats</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #FFE3D5 0%, #FFB88C 100%);
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #E53935; }
+        .btn {
+            background: #FFB88C;
+            color: #1F1F1F;
+            padding: 12px 32px;
+            border-radius: 30px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="status-card">
+        <h1 id="status-title">Processing...</h1>
+        <p id="status-message">Please wait while we verify your payment.</p>
+        <div id="loader" class="loader"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const reference = urlParams.get('reference');
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        async function verifyPayment() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/payments/verify/${reference}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('status-title').innerHTML = '✅ Payment Successful!';
+                    document.getElementById('status-message').innerHTML = 'Thank you for your order. You will receive a confirmation email shortly.';
+                    document.getElementById('status-card').innerHTML += '<a href="index.html" class="btn">Continue Shopping</a>';
+                } else {
+                    throw new Error('Payment failed');
+                }
+            } catch (error) {
+                document.getElementById('status-title').innerHTML = '❌ Payment Failed';
+                document.getElementById('status-message').innerHTML = 'Sorry, your payment could not be processed. Please try again.';
+                document.getElementById('status-card').innerHTML += '<a href="checkout.html" class="btn">Try Again</a>';
+            }
+        }
+
+        if (reference) {
+            verifyPayment();
+        } else {
+            document.getElementById('status-title').innerHTML = '❌ Invalid Request';
+            document.getElementById('status-message').innerHTML = 'No payment reference found.';
+        }
+    </script>
+</body>
+</html>

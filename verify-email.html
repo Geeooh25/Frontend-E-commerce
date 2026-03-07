@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification - Beedaht Sweet Treats</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        :root {
+            --primary: #FFB88C;
+            --primary-dark: #E08A5A;
+            --text-dark: #1F1F1F;
+            --success: #4CAF50;
+            --error: #E53935;
+        }
+
+        body {
+            background: linear-gradient(135deg, #FFE3D5 0%, #FFB88C 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+
+        .icon.success {
+            color: var(--success);
+        }
+
+        .icon.error {
+            color: var(--error);
+        }
+
+        h1 {
+            color: var(--text-dark);
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: var(--text-dark);
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container" id="container">
+        <div class="loading" id="loading"></div>
+        <div id="content" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+        
+        async function verifyEmail() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            if (!token) {
+                showError('Invalid verification link');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/verify-email/${token}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess();
+                } else {
+                    showError(data.message || 'Verification failed');
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            }
+        }
+        
+        function showSuccess() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            document.getElementById('content').innerHTML = `
+                <div class="icon success"><i class="fas fa-check-circle"></i></div>
+                <h1>Email Verified!</h1>
+                <p>Your email has been successfully verified. You can now log in to your account.</p>
+                <a href="index.html" class="btn">Go to Login</a>
+            `;
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            document.getElementById('content').innerHTML = `
+                <div class="icon error"><i class="fas fa-times-circle"></i></div>
+                <h1>Verification Failed</h1>
+                <p>${message}</p>
+                <a href="index.html" class="btn">Back to Home</a>
+            `;
+        }
+        
+        verifyEmail();
+    </script>
+</body>
+</html>
