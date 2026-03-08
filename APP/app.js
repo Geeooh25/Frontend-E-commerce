@@ -1,5 +1,5 @@
 // API Configuration - SINGLE DECLARATION
-const API_BASE_URL = 'https://beedaht-backend-e-commerce.onrender.com/api'; 
+const API_BASE_URL = 'https://backend-e-commerce-production-b9b1.up.railway.app/api'; 
 const CURRENCY = '₦';
 const DELIVERY_FEE = 1500; // Changed from 0 to actual delivery fee
 
