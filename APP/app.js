@@ -1,7 +1,7 @@
 // API Configuration - SINGLE DECLARATION
-const API_BASE_URL = 'http://localhost:5000/api'; 
+const API_BASE_URL = 'https://beedaht-backend-e-commerce.onrender.com/api'; 
 const CURRENCY = '₦';
-const DELIVERY_FEE = 0;
+const DELIVERY_FEE = 1500; // Changed from 0 to actual delivery fee
 
 // Firebase Configuration - Using the modular SDK (v9+)
 const firebaseConfig = {
@@ -484,8 +484,7 @@ function getStaticProducts() {
         // Your existing static products array - keeping it as is
         { id: 1, name: "Meat Pie", category: "small-chops", price: 1000, image: "./IMAGE/MEAT PIE.jpg", description: "Flaky pastry filled with seasoned minced meat.", hasAddOns: false },
         { id: 2, name: "Snowcap Doughnut", category: "small-chops", price: 1500, image: "./IMAGE/snowcap doughnut new.jpg", description: "Nigerian ring dough filled with powdered sweet milk.", hasAddOns: false },
-        { id: 3, name: "Puff Puff", category: "small-chops", price: 1000, image: "./IMAGE/FRESH PUFF PUFF.jpg", description: "Soft, fluffy Nigerian dough balls, lightly sweetened.", hasAddOns: false },
-        // ... rest of your static products
+        { id: 3, name: "Puff Puff", category: "small-chops", price: 1000, image: "./IMAGE/FRESH PUFF PUFF.jpg", description: "Soft, fluffy Nigerian dough balls, lightly sweetened.", hasAddOns: false }
     ];
 }
 
@@ -804,44 +803,76 @@ function updateCartDisplay() {
     if (!cartItemsContainer || !cartTotalElement) return;
     
     cartItemsContainer.innerHTML = '';
-    let total = 0;
+    let subtotal = 0;
     
-    if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `
-            <div class="cart-empty">
-                <i class="fas fa-shopping-bag"></i>
-                <p>Your cart is empty</p>
-                <a href="#products" class="btn" onclick="toggleCart()">Start Shopping</a>
+    // Display cart items
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+        
+        const cartItemElement = document.createElement('div');
+        cartItemElement.className = 'cart-item';
+        cartItemElement.innerHTML = `
+            <div class="cart-item-info">
+                <h4>${item.name}</h4>
+                <div class="cart-item-details">
+                    ${item.isCombo ? '<span class="combo-badge">COMBO</span>' : ''}
+                    ${item.addOns ? ` | ${item.addOns}` : ''}
+                </div>
+                <div class="cart-item-price">${CURRENCY}${itemTotal.toLocaleString()}</div>
+            </div>
+            <div class="cart-item-actions">
+                <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
+                <span>${item.quantity}</span>
+                <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
+                <button class="remove-item" onclick="removeFromCart(${item.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         `;
+        cartItemsContainer.appendChild(cartItemElement);
+    });
+    
+    // Calculate delivery using delivery service
+    let delivery = { fee: 0, message: 'Delivery: ₦0' };
+    if (typeof deliveryService !== 'undefined') {
+        delivery = deliveryService.calculateFee(subtotal);
     } else {
-        cart.forEach(item => {
-            const itemTotal = item.price * item.quantity;
-            total += itemTotal;
-            
-            const cartItemElement = document.createElement('div');
-            cartItemElement.className = 'cart-item';
-            cartItemElement.innerHTML = `
-                <div class="cart-item-info">
-                    <h4>${item.name}</h4>
-                    <div class="cart-item-details">
-                        ${item.isCombo ? '<span class="combo-badge">COMBO</span>' : ''}
-                        ${item.addOns ? ` | ${item.addOns}` : ''}
-                    </div>
-                    <div class="cart-item-price">${CURRENCY}${itemTotal.toLocaleString()}</div>
-                </div>
-                <div class="cart-item-actions">
-                    <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
-                    <span>${item.quantity}</span>
-                    <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
-                    <button class="remove-item" onclick="removeFromCart(${item.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `;
-            cartItemsContainer.appendChild(cartItemElement);
-        });
+        delivery.fee = DELIVERY_FEE;
+        delivery.message = `Delivery Fee: ₦${DELIVERY_FEE}`;
     }
+    
+    const total = subtotal + delivery.fee;
+    
+    // Add delivery info to cart
+    let deliveryInfoEl = document.getElementById('delivery-info');
+    if (!deliveryInfoEl) {
+        const cartFooter = document.querySelector('.cart-footer') || cartItemsContainer.parentNode;
+        deliveryInfoEl = document.createElement('div');
+        deliveryInfoEl.id = 'delivery-info';
+        deliveryInfoEl.className = 'delivery-info';
+        cartFooter.insertBefore(deliveryInfoEl, cartTotalElement.parentNode);
+    }
+    
+    // Update delivery info
+    let bannerHtml = '';
+    if (typeof deliveryService !== 'undefined' && deliveryService.getDeliveryBannerHTML) {
+        bannerHtml = deliveryService.getDeliveryBannerHTML(subtotal);
+    }
+    
+    deliveryInfoEl.innerHTML = `
+        <div class="delivery-summary">
+            <div class="delivery-row">
+                <span>Subtotal:</span>
+                <span>${CURRENCY}${subtotal.toLocaleString()}</span>
+            </div>
+            <div class="delivery-row">
+                <span>${delivery.message}</span>
+                <span>${delivery.fee === 0 ? 'FREE' : CURRENCY + delivery.fee.toLocaleString()}</span>
+            </div>
+            ${bannerHtml}
+        </div>
+    `;
     
     cartTotalElement.textContent = total.toLocaleString();
 }
@@ -900,14 +931,13 @@ function toggleCart() {
 
 // ==================== ORDER FUNCTIONS ====================
 
-// Proceed to checkout
+// Proceed to checkout - MAIN FUNCTION (keep this one)
 async function proceedToCheckout() {
     if (cart.length === 0) {
         showNotification('Your cart is empty!', 'error');
         return;
     }
     
-    // Check if user is logged in
     if (!currentUser) {
         showNotification('Please login to checkout', 'warning');
         openLoginModal();
@@ -921,11 +951,11 @@ async function proceedToCheckout() {
     if (!checkoutSummary || !checkoutTotal) return;
     
     checkoutSummary.innerHTML = '';
-    let total = 0;
+    let subtotal = 0;
     
     cart.forEach(item => {
         const itemTotal = item.price * item.quantity;
-        total += itemTotal;
+        subtotal += itemTotal;
         
         const itemElement = document.createElement('div');
         itemElement.className = 'cart-item';
@@ -943,6 +973,34 @@ async function proceedToCheckout() {
         `;
         checkoutSummary.appendChild(itemElement);
     });
+    
+    // Add delivery options to checkout modal
+    if (typeof deliveryService !== 'undefined') {
+        const checkoutBody = document.querySelector('#checkout-modal .modal-body');
+        if (checkoutBody) {
+            // Check if delivery section already exists
+            let deliverySection = document.getElementById('delivery-section');
+            if (!deliverySection) {
+                deliverySection = document.createElement('div');
+                deliverySection.id = 'delivery-section';
+                deliverySection.innerHTML = deliveryService.getDeliveryOptionsHTML(subtotal);
+                
+                // Insert before payment options
+                const paymentSection = document.querySelector('.payment-options')?.closest('.form-group');
+                if (paymentSection) {
+                    checkoutBody.insertBefore(deliverySection, paymentSection);
+                }
+            }
+        }
+    }
+    
+    // Calculate total with delivery
+    let deliveryFee = DELIVERY_FEE;
+    if (typeof deliveryService !== 'undefined') {
+        const delivery = deliveryService.calculateFee(subtotal);
+        deliveryFee = delivery.fee;
+    }
+    const total = subtotal + deliveryFee;
     
     checkoutTotal.textContent = total.toLocaleString();
     
@@ -968,6 +1026,34 @@ async function proceedToCheckout() {
     if (cartModal) cartModal.style.display = 'none';
     if (checkoutModal) checkoutModal.style.display = 'block';
 }
+
+// Update checkout total when delivery method changes
+function updateCheckoutTotal() {
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    
+    if (typeof deliveryService !== 'undefined') {
+        const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
+        const delivery = deliveryService.calculateFee(subtotal, selectedMethod);
+        const total = subtotal + delivery.fee;
+        
+        const checkoutTotalEl = document.getElementById('checkout-total');
+        if (checkoutTotalEl) {
+            checkoutTotalEl.textContent = total.toLocaleString();
+        }
+        
+        // Update delivery banner if it exists
+        const deliveryBanner = document.querySelector('#checkout-modal .delivery-banner');
+        if (deliveryBanner && deliveryService.getDeliveryBannerHTML) {
+            const newBanner = deliveryService.getDeliveryBannerHTML(subtotal);
+            if (newBanner) {
+                deliveryBanner.outerHTML = newBanner;
+            }
+        }
+    }
+}
+
+// Make it globally available
+window.updateCheckoutTotal = updateCheckoutTotal;
 
 // ==================== ORDER FUNCTIONS WITH PAYSTACK ====================
 
@@ -1019,12 +1105,25 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
         isCombo: item.isCombo || false
     }));
     
+    // Calculate total with dynamic delivery fee
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-    const deliveryPrice = DELIVERY_FEE;
-    const totalPrice = itemsPrice + deliveryPrice;
+    
+    // Get delivery fee from deliveryService
+    let deliveryFee = DELIVERY_FEE; // Fallback to your constant
+    
+    if (typeof deliveryService !== 'undefined') {
+        // Get the currently selected delivery method
+        const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
+        const delivery = deliveryService.calculateFee(itemsPrice, selectedMethod);
+        deliveryFee = delivery.fee;
+        console.log(`✅ Delivery fee calculated: ₦${deliveryFee} - ${delivery.message}`);
+    }
+    
+    const totalPrice = itemsPrice + deliveryFee;
     
     try {
         console.log('Creating regular order...');
+        console.log('Order Summary:', { itemsPrice, deliveryFee, totalPrice, paymentMethod });
         
         const response = await fetch(`${API_BASE_URL}/orders`, {
             method: 'POST',
@@ -1037,7 +1136,7 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
                 shippingAddress,
                 paymentMethod: paymentMethod,
                 itemsPrice,
-                deliveryPrice,
+                deliveryPrice: deliveryFee, // Send the dynamic delivery fee
                 totalPrice
             })
         });
@@ -1087,9 +1186,19 @@ async function processPaystackPayment(name, email, phone, addressText) {
         phone: phone || ''
     };
 
-    // Calculate total
+    // Calculate total with dynamic delivery fee
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-    const totalPrice = itemsPrice + DELIVERY_FEE;
+    
+    // Get delivery fee from deliveryService
+    let deliveryFee = DELIVERY_FEE;
+    if (typeof deliveryService !== 'undefined') {
+        const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
+        const delivery = deliveryService.calculateFee(itemsPrice, selectedMethod);
+        deliveryFee = delivery.fee;
+        console.log(`✅ Delivery fee calculated: ₦${deliveryFee} - ${delivery.message}`);
+    }
+    
+    const totalPrice = itemsPrice + deliveryFee;
 
     // Prepare order items
     const orderItems = cart.map(item => ({
@@ -1117,7 +1226,7 @@ async function processPaystackPayment(name, email, phone, addressText) {
                 shippingAddress,
                 paymentMethod: 'card',
                 itemsPrice,
-                deliveryPrice: DELIVERY_FEE,
+                deliveryPrice: deliveryFee,
                 totalPrice
             })
         });
