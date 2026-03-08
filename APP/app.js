@@ -478,10 +478,9 @@ async function loadProducts() {
     }
 }
 
-// Static product data as fallback (keeping your existing static products)
+// Static product data as fallback
 function getStaticProducts() {
     return [
-        // Your existing static products array - keeping it as is
         { id: 1, name: "Meat Pie", category: "small-chops", price: 1000, image: "./IMAGE/MEAT PIE.jpg", description: "Flaky pastry filled with seasoned minced meat.", hasAddOns: false },
         { id: 2, name: "Snowcap Doughnut", category: "small-chops", price: 1500, image: "./IMAGE/snowcap doughnut new.jpg", description: "Nigerian ring dough filled with powdered sweet milk.", hasAddOns: false },
         { id: 3, name: "Puff Puff", category: "small-chops", price: 1000, image: "./IMAGE/FRESH PUFF PUFF.jpg", description: "Soft, fluffy Nigerian dough balls, lightly sweetened.", hasAddOns: false }
@@ -499,13 +498,11 @@ function displayProducts(productsToShow) {
     container.innerHTML = '';
     
     productsToShow.forEach(product => {
-        // Log product to see structure (helpful for debugging)
         console.log('Displaying product:', product);
         
         const productCard = document.createElement('div');
         productCard.className = 'product-card';
         
-        // Use _id for API products, fallback to id for static products
         const productId = product._id || product.id;
         
         productCard.innerHTML = `
@@ -535,7 +532,6 @@ function displayAdvancedProducts(productsToShow) {
     container.innerHTML = '';
     
     productsToShow.forEach(product => {
-        // Use _id for API products, fallback to id for static products
         const productId = product._id || product.id;
         
         const productCard = document.createElement('div');
@@ -570,7 +566,6 @@ function formatCategory(category) {
 
 // Filter products by category
 function filterProducts(category) {
-    // Update active filter button
     document.querySelectorAll('.filter-option').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -584,8 +579,6 @@ function filterProducts(category) {
     }
     
     displayAdvancedProducts(filteredProducts);
-    
-    // Scroll to advanced shopping section
     document.getElementById('advanced-shop').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -696,7 +689,6 @@ async function addToCart() {
         addOnsDetails.push('Extra Cheese');
     }
     
-    // Use _id for API products, fallback to id for static products
     const productId = currentProduct._id || currentProduct.id;
     
     const cartItem = {
@@ -725,7 +717,6 @@ async function addToCart() {
         showNotification(`${currentProduct.name} added to cart!`, 'success');
     }
     
-    // Track add to cart event for analytics
     trackAddToCart({
         id: productId,
         name: currentProduct.name,
@@ -805,7 +796,6 @@ function updateCartDisplay() {
     cartItemsContainer.innerHTML = '';
     let subtotal = 0;
     
-    // Display cart items
     cart.forEach(item => {
         const itemTotal = item.price * item.quantity;
         subtotal += itemTotal;
@@ -833,7 +823,6 @@ function updateCartDisplay() {
         cartItemsContainer.appendChild(cartItemElement);
     });
     
-    // Calculate delivery using delivery service
     let delivery = { fee: 0, message: 'Delivery: ₦0' };
     if (typeof deliveryService !== 'undefined') {
         delivery = deliveryService.calculateFee(subtotal);
@@ -844,7 +833,6 @@ function updateCartDisplay() {
     
     const total = subtotal + delivery.fee;
     
-    // Add delivery info to cart
     let deliveryInfoEl = document.getElementById('delivery-info');
     if (!deliveryInfoEl) {
         const cartFooter = document.querySelector('.cart-footer') || cartItemsContainer.parentNode;
@@ -854,7 +842,6 @@ function updateCartDisplay() {
         cartFooter.insertBefore(deliveryInfoEl, cartTotalElement.parentNode);
     }
     
-    // Update delivery info
     let bannerHtml = '';
     if (typeof deliveryService !== 'undefined' && deliveryService.getDeliveryBannerHTML) {
         bannerHtml = deliveryService.getDeliveryBannerHTML(subtotal);
@@ -877,7 +864,6 @@ function updateCartDisplay() {
     cartTotalElement.textContent = total.toLocaleString();
 }
 
-// Update item quantity in cart
 function updateQuantity(itemId, change) {
     const itemIndex = cart.findIndex(item => item.id === itemId);
     if (itemIndex === -1) return;
@@ -896,7 +882,6 @@ function updateQuantity(itemId, change) {
     saveCartToStorage();
 }
 
-// Remove item from cart
 function removeFromCart(itemId) {
     const itemIndex = cart.findIndex(item => item.id === itemId);
     if (itemIndex === -1) return;
@@ -911,12 +896,10 @@ function removeFromCart(itemId) {
     showNotification(`${removedItem.name} removed from cart`, 'warning');
 }
 
-// Save cart to localStorage
 function saveCartToStorage() {
     localStorage.setItem('beedahtCart', JSON.stringify(cart));
 }
 
-// Toggle cart modal
 function toggleCart() {
     const cartModal = document.getElementById('cart-modal');
     if (!cartModal) return;
@@ -931,7 +914,7 @@ function toggleCart() {
 
 // ==================== ORDER FUNCTIONS ====================
 
-// Proceed to checkout - MAIN FUNCTION (keep this one)
+// ========== FIXED PROCEED TO CHECKOUT FUNCTION ==========
 async function proceedToCheckout() {
     if (cart.length === 0) {
         showNotification('Your cart is empty!', 'error');
@@ -974,22 +957,30 @@ async function proceedToCheckout() {
         checkoutSummary.appendChild(itemElement);
     });
     
-    // Add delivery options to checkout modal
+    // ========== FIXED DELIVERY SECTION INSERTION ==========
     if (typeof deliveryService !== 'undefined') {
         const checkoutBody = document.querySelector('#checkout-modal .modal-body');
         if (checkoutBody) {
-            // Check if delivery section already exists
-            let deliverySection = document.getElementById('delivery-section');
-            if (!deliverySection) {
-                deliverySection = document.createElement('div');
-                deliverySection.id = 'delivery-section';
-                deliverySection.innerHTML = deliveryService.getDeliveryOptionsHTML(subtotal);
-                
-                // Insert before payment options
-                const paymentSection = document.querySelector('.payment-options')?.closest('.form-group');
-                if (paymentSection) {
-                    checkoutBody.insertBefore(deliverySection, paymentSection);
-                }
+            // Remove existing delivery section if any
+            const existingSection = document.getElementById('delivery-section');
+            if (existingSection) {
+                existingSection.remove();
+            }
+            
+            // Create new delivery section
+            const deliverySection = document.createElement('div');
+            deliverySection.id = 'delivery-section';
+            deliverySection.innerHTML = deliveryService.getDeliveryOptionsHTML(subtotal);
+            
+            // Find payment section
+            const paymentSection = document.querySelector('.payment-options')?.closest('.form-group');
+            
+            // Insert before payment section if it exists
+            if (paymentSection && checkoutBody.contains(paymentSection)) {
+                checkoutBody.insertBefore(deliverySection, paymentSection);
+            } else {
+                // If payment section not found or not in checkoutBody, append to checkout body
+                checkoutBody.appendChild(deliverySection);
             }
         }
     }
@@ -1041,7 +1032,6 @@ function updateCheckoutTotal() {
             checkoutTotalEl.textContent = total.toLocaleString();
         }
         
-        // Update delivery banner if it exists
         const deliveryBanner = document.querySelector('#checkout-modal .delivery-banner');
         if (deliveryBanner && deliveryService.getDeliveryBannerHTML) {
             const newBanner = deliveryService.getDeliveryBannerHTML(subtotal);
@@ -1052,12 +1042,10 @@ function updateCheckoutTotal() {
     }
 }
 
-// Make it globally available
 window.updateCheckoutTotal = updateCheckoutTotal;
 
 // ==================== ORDER FUNCTIONS WITH PAYSTACK ====================
 
-// Process order - handles both regular and Paystack payments
 async function processOrder(event) {
     if (event) event.preventDefault();
     
@@ -1072,19 +1060,15 @@ async function processOrder(event) {
         return;
     }
     
-    // If Paystack is selected, use the Paystack payment flow
     if (paymentMethod === 'paystack') {
         await processPaystackPayment(name, email, phone, addressText);
         return;
     }
     
-    // Otherwise, use your existing payment flow (cash on delivery, bank transfer, etc.)
     await processRegularOrder(name, email, phone, addressText, paymentMethod);
 }
 
-// Process regular (non-Paystack) orders
 async function processRegularOrder(name, email, phone, addressText, paymentMethod) {
-    // Parse address correctly
     const addressParts = addressText ? addressText.split(',').map(part => part.trim()) : [];
     
     const shippingAddress = {
@@ -1095,7 +1079,6 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
         phone: phone || ''
     };
     
-    // Prepare order items
     const orderItems = cart.map(item => ({
         product: item.isCombo ? item.productId : item.productId?.toString() || '',
         name: item.name,
@@ -1105,14 +1088,11 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
         isCombo: item.isCombo || false
     }));
     
-    // Calculate total with dynamic delivery fee
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    // Get delivery fee from deliveryService
-    let deliveryFee = DELIVERY_FEE; // Fallback to your constant
+    let deliveryFee = DELIVERY_FEE;
     
     if (typeof deliveryService !== 'undefined') {
-        // Get the currently selected delivery method
         const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
         const delivery = deliveryService.calculateFee(itemsPrice, selectedMethod);
         deliveryFee = delivery.fee;
@@ -1123,7 +1103,6 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
     
     try {
         console.log('Creating regular order...');
-        console.log('Order Summary:', { itemsPrice, deliveryFee, totalPrice, paymentMethod });
         
         const response = await fetch(`${API_BASE_URL}/orders`, {
             method: 'POST',
@@ -1136,7 +1115,7 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
                 shippingAddress,
                 paymentMethod: paymentMethod,
                 itemsPrice,
-                deliveryPrice: deliveryFee, // Send the dynamic delivery fee
+                deliveryPrice: deliveryFee,
                 totalPrice
             })
         });
@@ -1146,12 +1125,10 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
         if (data.success) {
             showNotification('Order placed successfully! We will contact you shortly.', 'success');
             
-            // Clear cart
             cart = [];
             updateCartCount();
             saveCartToStorage();
             
-            // Reset form and close modal
             const form = document.getElementById('checkout-form');
             if (form) form.reset();
             closeModal('checkout-modal');
@@ -1164,7 +1141,6 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
     }
 }
 
-// Process Paystack payment
 async function processPaystackPayment(name, email, phone, addressText) {
     if (cart.length === 0) {
         showNotification('Your cart is empty!', 'error');
@@ -1177,7 +1153,6 @@ async function processPaystackPayment(name, email, phone, addressText) {
         return;
     }
 
-    // Parse address
     const addressParts = addressText ? addressText.split(',').map(part => part.trim()) : [];
     const shippingAddress = {
         street: addressParts[0] || 'No address provided',
@@ -1186,10 +1161,8 @@ async function processPaystackPayment(name, email, phone, addressText) {
         phone: phone || ''
     };
 
-    // Calculate total with dynamic delivery fee
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    // Get delivery fee from deliveryService
     let deliveryFee = DELIVERY_FEE;
     if (typeof deliveryService !== 'undefined') {
         const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
@@ -1200,7 +1173,6 @@ async function processPaystackPayment(name, email, phone, addressText) {
     
     const totalPrice = itemsPrice + deliveryFee;
 
-    // Prepare order items
     const orderItems = cart.map(item => ({
         product: item.isCombo ? item.productId : item.productId?.toString() || '',
         name: item.name,
@@ -1210,11 +1182,9 @@ async function processPaystackPayment(name, email, phone, addressText) {
         isCombo: item.isCombo || false
     }));
 
-    // Show loading
     showNotification('Creating your order...', 'info');
 
     try {
-        // First create the order
         const orderResponse = await fetch(`${API_BASE_URL}/orders`, {
             method: 'POST',
             headers: {
@@ -1235,7 +1205,6 @@ async function processPaystackPayment(name, email, phone, addressText) {
         console.log('Order created:', orderData);
 
         if (orderData.success) {
-            // Initialize Paystack payment
             await initializePaystackPayment(
                 orderData.order.totalPrice,
                 currentUser.email,
@@ -1250,7 +1219,6 @@ async function processPaystackPayment(name, email, phone, addressText) {
     }
 }
 
-// Initialize Paystack payment
 async function initializePaystackPayment(amount, email, orderId) {
     try {
         const response = await fetch(`${API_BASE_URL}/payments/initialize`, {
@@ -1266,7 +1234,6 @@ async function initializePaystackPayment(amount, email, orderId) {
         console.log('Payment initialization:', data);
 
         if (data.success) {
-            // Redirect to Paystack payment page
             window.location.href = data.authorization_url;
         } else {
             showNotification(data.message || 'Payment initialization failed', 'error');
@@ -1277,12 +1244,10 @@ async function initializePaystackPayment(amount, email, orderId) {
     }
 }
 
-// Close checkout modal
 function closeCheckout() {
     closeModal('checkout-modal');
 }
 
-// Select payment method
 function selectPayment(method) {
     document.querySelectorAll('.payment-option').forEach(option => {
         option.classList.remove('selected');
@@ -1294,13 +1259,11 @@ function selectPayment(method) {
     const radio = document.getElementById(method);
     if (radio) radio.checked = true;
     
-    // If Paystack is selected, you might want to show additional info
     if (method === 'paystack') {
         console.log('Paystack selected');
     }
 }
 
-// View my orders
 async function viewMyOrders() {
     if (!currentUser) {
         showNotification('Please login to view your orders', 'warning');
@@ -1344,11 +1307,9 @@ async function viewMyOrders() {
 
 // ==================== MODAL FUNCTIONS ====================
 
-// Open product detail modal - FIXED VERSION
 function openProductModal(productId) {
     console.log('Looking for product with ID:', productId);
     
-    // Try to find by _id (MongoDB) first, then fallback to id (static)
     const product = products.find(p => p._id == productId || p.id == productId);
     
     if (!product) {
@@ -1393,7 +1354,6 @@ function openProductModal(productId) {
     if (modal) modal.style.display = 'block';
 }
 
-// Open combo detail modal with dynamic toppings
 function openComboModal(name, price, image) {
     currentCombo = { name, price, image };
     comboAddOnsTotal = 0;
@@ -1473,7 +1433,6 @@ function openComboModal(name, price, image) {
     if (modal) modal.style.display = 'block';
 }
 
-// Show generic modal
 function showModal(title, content) {
     const existingModal = document.getElementById('generic-modal');
     if (existingModal) existingModal.remove();
@@ -1494,7 +1453,6 @@ function showModal(title, content) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// Close modal
 function closeModal(modalId) {
     console.log('Closing modal:', modalId);
     const modal = document.getElementById(modalId);
@@ -1513,7 +1471,6 @@ function closeModal(modalId) {
     }
 }
 
-// Increase product quantity
 function increaseQuantity() {
     quantity++;
     const qtyEl = document.getElementById('quantity-display');
@@ -1521,7 +1478,6 @@ function increaseQuantity() {
     updateProductPriceDisplay();
 }
 
-// Decrease product quantity
 function decreaseQuantity() {
     if (quantity > 1) {
         quantity--;
@@ -1531,7 +1487,6 @@ function decreaseQuantity() {
     }
 }
 
-// Update product price display
 function updateProductPriceDisplay() {
     if (currentProduct) {
         const basePrice = currentProduct.price;
@@ -1541,7 +1496,6 @@ function updateProductPriceDisplay() {
     }
 }
 
-// Update add-on price calculation
 function updateAddOnPrice() {
     addOnsTotal = 0;
     
@@ -1558,7 +1512,6 @@ function updateAddOnPrice() {
     updateProductPriceDisplay();
 }
 
-// Increase combo quantity
 function increaseComboQuantity() {
     comboQuantity++;
     const qtyEl = document.getElementById('combo-quantity-display');
@@ -1566,7 +1519,6 @@ function increaseComboQuantity() {
     updateComboPriceDisplay();
 }
 
-// Decrease combo quantity
 function decreaseComboQuantity() {
     if (comboQuantity > 1) {
         comboQuantity--;
@@ -1576,7 +1528,6 @@ function decreaseComboQuantity() {
     }
 }
 
-// Update combo price display
 function updateComboPriceDisplay() {
     if (currentCombo) {
         const basePrice = currentCombo.price;
@@ -1586,7 +1537,6 @@ function updateComboPriceDisplay() {
     }
 }
 
-// Update combo add-on price calculation
 function updateComboAddOnPrice() {
     comboAddOnsTotal = 0;
     
@@ -1610,7 +1560,6 @@ function updateComboAddOnPrice() {
 
 // ==================== QUICK ORDER FUNCTIONS ====================
 
-// Show quick order modal
 function showOrderModal(type) {
     const modal = document.getElementById('quick-order-modal');
     const title = document.getElementById('quick-order-title');
@@ -1627,7 +1576,6 @@ function showOrderModal(type) {
     if (modal) modal.style.display = 'block';
 }
 
-// Show subscription modal
 function showSubscriptionModal() {
     const modal = document.getElementById('quick-order-modal');
     const title = document.getElementById('quick-order-title');
@@ -1639,13 +1587,11 @@ function showSubscriptionModal() {
     if (modal) modal.style.display = 'block';
 }
 
-// Close quick order modal
 function closeQuickOrder() {
     const modal = document.getElementById('quick-order-modal');
     if (modal) modal.style.display = 'none';
 }
 
-// Submit quick order
 function submitQuickOrder() {
     const name = document.getElementById('quick-order-name')?.value;
     const phone = document.getElementById('quick-order-phone')?.value;
@@ -1671,7 +1617,6 @@ function submitQuickOrder() {
 
 // ==================== NOTIFICATION FUNCTIONS ====================
 
-// Show notification
 function showNotification(message, type = 'success') {
     document.querySelectorAll('.notification').forEach(el => el.remove());
     
@@ -1966,7 +1911,6 @@ function shareOnWhatsApp(url, text) {
 
 // ==================== ANALYTICS FUNCTIONS ====================
 
-// Track page views
 function trackPageView(pageName) {
     if (typeof gtag !== 'undefined') {
         gtag('event', 'page_view', {
@@ -1977,7 +1921,6 @@ function trackPageView(pageName) {
     }
 }
 
-// Track e-commerce events
 function trackAddToCart(product) {
     if (typeof gtag !== 'undefined') {
         gtag('event', 'add_to_cart', {
@@ -2012,7 +1955,6 @@ function trackPurchase(order) {
 // ==================== EVENT LISTENERS ====================
 
 function setupEventListeners() {
-    // Mobile menu toggle
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
     const nav = document.querySelector('nav');
     
@@ -2023,7 +1965,6 @@ function setupEventListeners() {
         });
     }
     
-    // Close menu when clicking outside
     document.addEventListener('click', function(e) {
         if (nav && nav.classList.contains('active') && 
             !nav.contains(e.target) && 
@@ -2032,7 +1973,6 @@ function setupEventListeners() {
         }
     });
     
-    // Close menu when clicking a link
     if (nav) {
         nav.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', function() {
@@ -2041,7 +1981,6 @@ function setupEventListeners() {
         });
     }
     
-    // Checkout form submission
     const checkoutForm = document.getElementById('checkout-form');
     if (checkoutForm) {
         checkoutForm.addEventListener('submit', function(e) {
@@ -2050,7 +1989,6 @@ function setupEventListeners() {
         });
     }
     
-    // Newsletter form submission
     const newsletterBtn = document.querySelector('.newsletter-form button');
     if (newsletterBtn) {
         newsletterBtn.addEventListener('click', function(e) {
@@ -2065,7 +2003,6 @@ function setupEventListeners() {
         });
     }
     
-    // Smooth scrolling for navigation links
     document.querySelectorAll('nav a').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             const href = this.getAttribute('href');
@@ -2092,7 +2029,6 @@ function setupEventListeners() {
         });
     });
     
-    // Close modals when clicking outside
     window.onclick = function(event) {
         if (event.target.classList.contains('modal')) {
             const modalId = event.target.id;
@@ -2101,7 +2037,6 @@ function setupEventListeners() {
     };
 }
 
-// Helper functions for modal close (backward compatibility)
 function closeComboModal() {
     closeModal('combo-modal');
 }
@@ -2112,7 +2047,6 @@ function closeProductModal() {
 
 // ==================== EXPOSE FUNCTIONS GLOBALLY ====================
 
-// Make sure all functions are available globally
 window.openLoginModal = openLoginModal;
 window.openRegisterModal = openRegisterModal;
 window.openForgotPasswordModal = openForgotPasswordModal;
@@ -2151,8 +2085,6 @@ window.updateQuantity = updateQuantity;
 window.removeFromCart = removeFromCart;
 window.closeComboModal = closeComboModal;
 window.closeProductModal = closeProductModal;
-
-// Expose new functions
 window.initializePaystackPayment = initializePaystackPayment;
 window.processPaystackPayment = processPaystackPayment;
 window.shareOnFacebook = shareOnFacebook;
