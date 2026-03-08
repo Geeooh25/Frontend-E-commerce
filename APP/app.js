@@ -41,7 +41,52 @@ let token = localStorage.getItem('token');
 // Product data (will be fetched from API)
 let products = [];
 
-// Initialize the page
+// ==================== SAFE DOM MANIPULATION HELPER ====================
+function safeInsertBefore(parent, newNode, referenceNode) {
+    // Check if parent exists and is in DOM
+    if (!parent || !document.body.contains(parent)) {
+        console.warn('Parent element not found or not in DOM');
+        return false;
+    }
+    
+    // Check if reference node is valid and is a child of parent
+    if (!referenceNode || !parent.contains(referenceNode)) {
+        // If reference node is invalid, just append
+        parent.appendChild(newNode);
+        return true;
+    }
+    
+    // Safe to insert before
+    parent.insertBefore(newNode, referenceNode);
+    return true;
+}
+
+function safeAppendChild(parent, child) {
+    if (parent && document.body.contains(parent)) {
+        parent.appendChild(child);
+        return true;
+    }
+    console.warn('Parent element not found or not in DOM');
+    return false;
+}
+
+function safeRemoveElement(element) {
+    if (element && element.parentNode && document.body.contains(element)) {
+        element.remove();
+        return true;
+    }
+    return false;
+}
+
+function safeGetElement(id) {
+    const element = document.getElementById(id);
+    if (element && document.body.contains(element)) {
+        return element;
+    }
+    return null;
+}
+
+// ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', function() {
     checkAuthStatus();
     loadProducts();
@@ -82,12 +127,12 @@ function checkAuthStatus() {
 function updateAuthUI(isLoggedIn) {
     console.log('Updating auth UI, logged in:', isLoggedIn);
     
-    const authButtons = document.getElementById('auth-buttons');
-    const userProfile = document.getElementById('user-profile');
-    const mobileAuthButtons = document.getElementById('mobile-auth-buttons');
-    const mobileUserMenu = document.getElementById('mobile-user-menu');
-    const mobileUserName = document.getElementById('mobile-user-name');
-    const userNameEl = document.getElementById('user-name');
+    const authButtons = safeGetElement('auth-buttons');
+    const userProfile = safeGetElement('user-profile');
+    const mobileAuthButtons = safeGetElement('mobile-auth-buttons');
+    const mobileUserMenu = safeGetElement('mobile-user-menu');
+    const mobileUserName = safeGetElement('mobile-user-name');
+    const userNameEl = safeGetElement('user-name');
     
     if (isLoggedIn && currentUser) {
         // Desktop
@@ -115,9 +160,8 @@ function updateAuthUI(isLoggedIn) {
 }
 
 function openLoginModal() {
-    
-    const existingModal = document.getElementById('login-modal');
-    if (existingModal) existingModal.remove();
+    const existingModal = safeGetElement('login-modal');
+    if (existingModal) safeRemoveElement(existingModal);
     
     // Create login modal dynamically
     const modalHtml = `
@@ -153,9 +197,8 @@ function openLoginModal() {
 }
 
 function openRegisterModal() {
-  
-    const existingModal = document.getElementById('register-modal');
-    if (existingModal) existingModal.remove();
+    const existingModal = safeGetElement('register-modal');
+    if (existingModal) safeRemoveElement(existingModal);
     
     const modalHtml = `
         <div class="modal" id="register-modal" style="display: block;">
@@ -345,16 +388,16 @@ function openForgotPasswordModal() {
     console.log('Opening forgot password modal');
     
     // Close login modal if open
-    const loginModal = document.getElementById('login-modal');
+    const loginModal = safeGetElement('login-modal');
     if (loginModal) {
         loginModal.style.display = 'none';
-        loginModal.remove();
+        safeRemoveElement(loginModal);
     }
     
     // Remove any existing forgot password modal
-    const existingModal = document.getElementById('forgot-password-modal');
+    const existingModal = safeGetElement('forgot-password-modal');
     if (existingModal) {
-        existingModal.remove();
+        safeRemoveElement(existingModal);
     }
     
     // Create the forgot password modal HTML
@@ -489,7 +532,7 @@ function getStaticProducts() {
 
 // Display products in the gallery
 function displayProducts(productsToShow) {
-    const container = document.getElementById('products-container');
+    const container = safeGetElement('products-container');
     if (!container) {
         console.error('Products container not found!');
         return;
@@ -517,13 +560,13 @@ function displayProducts(productsToShow) {
                 </div>
             </div>
         `;
-        container.appendChild(productCard);
+        safeAppendChild(container, productCard);
     });
 }
 
 // Display products in advanced shopping
 function displayAdvancedProducts(productsToShow) {
-    const container = document.getElementById('advanced-products-container');
+    const container = safeGetElement('advanced-products-container');
     if (!container) {
         console.error('Advanced products container not found!');
         return;
@@ -548,7 +591,7 @@ function displayAdvancedProducts(productsToShow) {
                 </div>
             </div>
         `;
-        container.appendChild(productCard);
+        safeAppendChild(container, productCard);
     });
 }
 
@@ -579,7 +622,10 @@ function filterProducts(category) {
     }
     
     displayAdvancedProducts(filteredProducts);
-    document.getElementById('advanced-shop').scrollIntoView({ behavior: 'smooth' });
+    const advancedShop = safeGetElement('advanced-shop');
+    if (advancedShop) {
+        advancedShop.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 // Filter category from footer links
@@ -788,8 +834,8 @@ function updateCartCount() {
 
 // Update cart display in modal
 function updateCartDisplay() {
-    const cartItemsContainer = document.getElementById('cart-items');
-    const cartTotalElement = document.getElementById('cart-total');
+    const cartItemsContainer = safeGetElement('cart-items');
+    const cartTotalElement = safeGetElement('cart-total');
     
     if (!cartItemsContainer || !cartTotalElement) return;
     
@@ -820,7 +866,7 @@ function updateCartDisplay() {
                 </button>
             </div>
         `;
-        cartItemsContainer.appendChild(cartItemElement);
+        safeAppendChild(cartItemsContainer, cartItemElement);
     });
     
     let delivery = { fee: 0, message: 'Delivery: ₦0' };
@@ -833,33 +879,37 @@ function updateCartDisplay() {
     
     const total = subtotal + delivery.fee;
     
-    let deliveryInfoEl = document.getElementById('delivery-info');
+    let deliveryInfoEl = safeGetElement('delivery-info');
     if (!deliveryInfoEl) {
         const cartFooter = document.querySelector('.cart-footer') || cartItemsContainer.parentNode;
-        deliveryInfoEl = document.createElement('div');
-        deliveryInfoEl.id = 'delivery-info';
-        deliveryInfoEl.className = 'delivery-info';
-        cartFooter.insertBefore(deliveryInfoEl, cartTotalElement.parentNode);
+        if (cartFooter) {
+            deliveryInfoEl = document.createElement('div');
+            deliveryInfoEl.id = 'delivery-info';
+            deliveryInfoEl.className = 'delivery-info';
+            safeAppendChild(cartFooter, deliveryInfoEl);
+        }
     }
     
-    let bannerHtml = '';
-    if (typeof deliveryService !== 'undefined' && deliveryService.getDeliveryBannerHTML) {
-        bannerHtml = deliveryService.getDeliveryBannerHTML(subtotal);
+    if (deliveryInfoEl) {
+        let bannerHtml = '';
+        if (typeof deliveryService !== 'undefined' && deliveryService.getDeliveryBannerHTML) {
+            bannerHtml = deliveryService.getDeliveryBannerHTML(subtotal);
+        }
+        
+        deliveryInfoEl.innerHTML = `
+            <div class="delivery-summary">
+                <div class="delivery-row">
+                    <span>Subtotal:</span>
+                    <span>${CURRENCY}${subtotal.toLocaleString()}</span>
+                </div>
+                <div class="delivery-row">
+                    <span>${delivery.message}</span>
+                    <span>${delivery.fee === 0 ? 'FREE' : CURRENCY + delivery.fee.toLocaleString()}</span>
+                </div>
+                ${bannerHtml}
+            </div>
+        `;
     }
-    
-    deliveryInfoEl.innerHTML = `
-        <div class="delivery-summary">
-            <div class="delivery-row">
-                <span>Subtotal:</span>
-                <span>${CURRENCY}${subtotal.toLocaleString()}</span>
-            </div>
-            <div class="delivery-row">
-                <span>${delivery.message}</span>
-                <span>${delivery.fee === 0 ? 'FREE' : CURRENCY + delivery.fee.toLocaleString()}</span>
-            </div>
-            ${bannerHtml}
-        </div>
-    `;
     
     cartTotalElement.textContent = total.toLocaleString();
 }
@@ -901,7 +951,7 @@ function saveCartToStorage() {
 }
 
 function toggleCart() {
-    const cartModal = document.getElementById('cart-modal');
+    const cartModal = safeGetElement('cart-modal');
     if (!cartModal) return;
     
     if (cartModal.style.display === 'block') {
@@ -928,10 +978,13 @@ async function proceedToCheckout() {
     }
     
     // Update checkout summary
-    const checkoutSummary = document.getElementById('checkout-summary');
-    const checkoutTotal = document.getElementById('checkout-total');
+    const checkoutSummary = safeGetElement('checkout-summary');
+    const checkoutTotal = safeGetElement('checkout-total');
     
-    if (!checkoutSummary || !checkoutTotal) return;
+    if (!checkoutSummary || !checkoutTotal) {
+        console.error('Checkout elements not found');
+        return;
+    }
     
     checkoutSummary.innerHTML = '';
     let subtotal = 0;
@@ -954,33 +1007,46 @@ async function proceedToCheckout() {
                 ${CURRENCY}${itemTotal.toLocaleString()} (${item.quantity}x)
             </div>
         `;
-        checkoutSummary.appendChild(itemElement);
+        safeAppendChild(checkoutSummary, itemElement);
     });
     
     // ========== FIXED DELIVERY SECTION INSERTION ==========
     if (typeof deliveryService !== 'undefined') {
-        const checkoutBody = document.querySelector('#checkout-modal .modal-body');
-        if (checkoutBody) {
-            // Remove existing delivery section if any
-            const existingSection = document.getElementById('delivery-section');
-            if (existingSection) {
-                existingSection.remove();
-            }
+        const checkoutModal = safeGetElement('checkout-modal');
+        if (checkoutModal) {
+            const checkoutBody = checkoutModal.querySelector('.modal-body');
             
-            // Create new delivery section
-            const deliverySection = document.createElement('div');
-            deliverySection.id = 'delivery-section';
-            deliverySection.innerHTML = deliveryService.getDeliveryOptionsHTML(subtotal);
-            
-            // Find payment section
-            const paymentSection = document.querySelector('.payment-options')?.closest('.form-group');
-            
-            // Insert before payment section if it exists
-            if (paymentSection && checkoutBody.contains(paymentSection)) {
-                checkoutBody.insertBefore(deliverySection, paymentSection);
+            if (checkoutBody && document.body.contains(checkoutBody)) {
+                // Remove existing delivery section if any
+                const existingSection = safeGetElement('delivery-section');
+                if (existingSection && existingSection.parentNode) {
+                    safeRemoveElement(existingSection);
+                }
+                
+                // Create new delivery section
+                const deliverySection = document.createElement('div');
+                deliverySection.id = 'delivery-section';
+                deliverySection.innerHTML = deliveryService.getDeliveryOptionsHTML(subtotal);
+                
+                // Find payment section
+                const paymentSection = checkoutBody.querySelector('.payment-options')?.closest('.form-group');
+                
+                // SAFE INSERTION - Check if parent contains reference node
+                if (paymentSection && checkoutBody.contains(paymentSection)) {
+                    // Check if paymentSection has a parent and is in the DOM
+                    if (paymentSection.parentNode === checkoutBody) {
+                        // Safe to insert before
+                        checkoutBody.insertBefore(deliverySection, paymentSection);
+                    } else {
+                        // If paymentSection is not a direct child, append to checkout body
+                        safeAppendChild(checkoutBody, deliverySection);
+                    }
+                } else {
+                    // If payment section not found, append to checkout body
+                    safeAppendChild(checkoutBody, deliverySection);
+                }
             } else {
-                // If payment section not found or not in checkoutBody, append to checkout body
-                checkoutBody.appendChild(deliverySection);
+                console.warn('Checkout body not found or not in DOM');
             }
         }
     }
@@ -996,10 +1062,10 @@ async function proceedToCheckout() {
     checkoutTotal.textContent = total.toLocaleString();
     
     // Pre-fill user data
-    const nameField = document.getElementById('checkout-name');
-    const emailField = document.getElementById('checkout-email');
-    const phoneField = document.getElementById('checkout-phone');
-    const addressField = document.getElementById('checkout-address');
+    const nameField = safeGetElement('checkout-name');
+    const emailField = safeGetElement('checkout-email');
+    const phoneField = safeGetElement('checkout-phone');
+    const addressField = safeGetElement('checkout-address');
     
     if (nameField) nameField.value = currentUser.name || '';
     if (emailField) emailField.value = currentUser.email || '';
@@ -1011,8 +1077,8 @@ async function proceedToCheckout() {
     }
     
     // Show checkout modal
-    const cartModal = document.getElementById('cart-modal');
-    const checkoutModal = document.getElementById('checkout-modal');
+    const cartModal = safeGetElement('cart-modal');
+    const checkoutModal = safeGetElement('checkout-modal');
     
     if (cartModal) cartModal.style.display = 'none';
     if (checkoutModal) checkoutModal.style.display = 'block';
@@ -1027,7 +1093,7 @@ function updateCheckoutTotal() {
         const delivery = deliveryService.calculateFee(subtotal, selectedMethod);
         const total = subtotal + delivery.fee;
         
-        const checkoutTotalEl = document.getElementById('checkout-total');
+        const checkoutTotalEl = safeGetElement('checkout-total');
         if (checkoutTotalEl) {
             checkoutTotalEl.textContent = total.toLocaleString();
         }
@@ -1049,10 +1115,10 @@ window.updateCheckoutTotal = updateCheckoutTotal;
 async function processOrder(event) {
     if (event) event.preventDefault();
     
-    const name = document.getElementById('checkout-name')?.value;
-    const email = document.getElementById('checkout-email')?.value;
-    const phone = document.getElementById('checkout-phone')?.value;
-    const addressText = document.getElementById('checkout-address')?.value;
+    const name = safeGetElement('checkout-name')?.value;
+    const email = safeGetElement('checkout-email')?.value;
+    const phone = safeGetElement('checkout-phone')?.value;
+    const addressText = safeGetElement('checkout-address')?.value;
     const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value;
     
     if (!paymentMethod) {
@@ -1323,11 +1389,11 @@ function openProductModal(productId) {
     addOnsTotal = 0;
     quantity = 1;
     
-    const nameEl = document.getElementById('modal-product-name');
-    const imgEl = document.getElementById('modal-product-img');
-    const descEl = document.getElementById('modal-product-description');
-    const priceEl = document.getElementById('modal-product-price');
-    const qtyEl = document.getElementById('quantity-display');
+    const nameEl = safeGetElement('modal-product-name');
+    const imgEl = safeGetElement('modal-product-img');
+    const descEl = safeGetElement('modal-product-description');
+    const priceEl = safeGetElement('modal-product-price');
+    const qtyEl = safeGetElement('quantity-display');
     
     if (nameEl) nameEl.textContent = product.name;
     if (imgEl) imgEl.src = product.image;
@@ -1335,7 +1401,7 @@ function openProductModal(productId) {
     updateProductPriceDisplay();
     if (qtyEl) qtyEl.textContent = quantity;
     
-    const addOnsSection = document.getElementById('add-ons-section');
+    const addOnsSection = safeGetElement('add-ons-section');
     if (addOnsSection) {
         if (product.hasAddOns) {
             addOnsSection.classList.remove('hidden');
@@ -1350,7 +1416,7 @@ function openProductModal(productId) {
         }
     }
     
-    const modal = document.getElementById('product-modal');
+    const modal = safeGetElement('product-modal');
     if (modal) modal.style.display = 'block';
 }
 
@@ -1359,17 +1425,17 @@ function openComboModal(name, price, image) {
     comboAddOnsTotal = 0;
     comboQuantity = 1;
     
-    const nameEl = document.getElementById('combo-modal-name');
-    const imgEl = document.getElementById('combo-modal-img');
-    const priceEl = document.getElementById('combo-modal-price');
-    const qtyEl = document.getElementById('combo-quantity-display');
+    const nameEl = safeGetElement('combo-modal-name');
+    const imgEl = safeGetElement('combo-modal-img');
+    const priceEl = safeGetElement('combo-modal-price');
+    const qtyEl = safeGetElement('combo-quantity-display');
     
     if (nameEl) nameEl.textContent = name;
     if (imgEl) imgEl.src = image;
     updateComboPriceDisplay();
     if (qtyEl) qtyEl.textContent = comboQuantity;
     
-    const addOnsContainer = document.getElementById('combo-add-ons');
+    const addOnsContainer = safeGetElement('combo-add-ons');
     if (!addOnsContainer) return;
     
     addOnsContainer.innerHTML = '';
@@ -1426,16 +1492,16 @@ function openComboModal(name, price, image) {
             </div>
             <span class="add-on-price">${CURRENCY}${topping.price.toLocaleString()}</span>
         `;
-        addOnsContainer.appendChild(addOnOption);
+        safeAppendChild(addOnsContainer, addOnOption);
     });
     
-    const modal = document.getElementById('combo-modal');
+    const modal = safeGetElement('combo-modal');
     if (modal) modal.style.display = 'block';
 }
 
 function showModal(title, content) {
-    const existingModal = document.getElementById('generic-modal');
-    if (existingModal) existingModal.remove();
+    const existingModal = safeGetElement('generic-modal');
+    if (existingModal) safeRemoveElement(existingModal);
     
     const modalHtml = `
         <div class="modal" id="generic-modal" style="display: block;">
@@ -1455,7 +1521,7 @@ function showModal(title, content) {
 
 function closeModal(modalId) {
     console.log('Closing modal:', modalId);
-    const modal = document.getElementById(modalId);
+    const modal = safeGetElement(modalId);
     if (modal) {
         modal.style.display = 'none';
         
@@ -1465,7 +1531,7 @@ function closeModal(modalId) {
                 if (staticModals.includes(modalId)) {
                     return;
                 }
-                modal.remove();
+                safeRemoveElement(modal);
             }
         }, 300);
     }
@@ -1473,7 +1539,7 @@ function closeModal(modalId) {
 
 function increaseQuantity() {
     quantity++;
-    const qtyEl = document.getElementById('quantity-display');
+    const qtyEl = safeGetElement('quantity-display');
     if (qtyEl) qtyEl.textContent = quantity;
     updateProductPriceDisplay();
 }
@@ -1481,7 +1547,7 @@ function increaseQuantity() {
 function decreaseQuantity() {
     if (quantity > 1) {
         quantity--;
-        const qtyEl = document.getElementById('quantity-display');
+        const qtyEl = safeGetElement('quantity-display');
         if (qtyEl) qtyEl.textContent = quantity;
         updateProductPriceDisplay();
     }
@@ -1491,7 +1557,7 @@ function updateProductPriceDisplay() {
     if (currentProduct) {
         const basePrice = currentProduct.price;
         const totalPrice = (basePrice + addOnsTotal) * quantity;
-        const priceEl = document.getElementById('modal-product-price');
+        const priceEl = safeGetElement('modal-product-price');
         if (priceEl) priceEl.textContent = `${CURRENCY}${totalPrice.toLocaleString()}`;
     }
 }
@@ -1514,7 +1580,7 @@ function updateAddOnPrice() {
 
 function increaseComboQuantity() {
     comboQuantity++;
-    const qtyEl = document.getElementById('combo-quantity-display');
+    const qtyEl = safeGetElement('combo-quantity-display');
     if (qtyEl) qtyEl.textContent = comboQuantity;
     updateComboPriceDisplay();
 }
@@ -1522,7 +1588,7 @@ function increaseComboQuantity() {
 function decreaseComboQuantity() {
     if (comboQuantity > 1) {
         comboQuantity--;
-        const qtyEl = document.getElementById('combo-quantity-display');
+        const qtyEl = safeGetElement('combo-quantity-display');
         if (qtyEl) qtyEl.textContent = comboQuantity;
         updateComboPriceDisplay();
     }
@@ -1532,7 +1598,7 @@ function updateComboPriceDisplay() {
     if (currentCombo) {
         const basePrice = currentCombo.price;
         const totalPrice = (basePrice + comboAddOnsTotal) * comboQuantity;
-        const priceEl = document.getElementById('combo-modal-price');
+        const priceEl = safeGetElement('combo-modal-price');
         if (priceEl) priceEl.textContent = `${CURRENCY}${totalPrice.toLocaleString()}`;
     }
 }
@@ -1561,9 +1627,9 @@ function updateComboAddOnPrice() {
 // ==================== QUICK ORDER FUNCTIONS ====================
 
 function showOrderModal(type) {
-    const modal = document.getElementById('quick-order-modal');
-    const title = document.getElementById('quick-order-title');
-    const message = document.getElementById('quick-order-message');
+    const modal = safeGetElement('quick-order-modal');
+    const title = safeGetElement('quick-order-title');
+    const message = safeGetElement('quick-order-message');
     
     if (type === 'pickup') {
         if (title) title.textContent = 'Store Pickup Order';
@@ -1577,9 +1643,9 @@ function showOrderModal(type) {
 }
 
 function showSubscriptionModal() {
-    const modal = document.getElementById('quick-order-modal');
-    const title = document.getElementById('quick-order-title');
-    const message = document.getElementById('quick-order-message');
+    const modal = safeGetElement('quick-order-modal');
+    const title = safeGetElement('quick-order-title');
+    const message = safeGetElement('quick-order-message');
     
     if (title) title.textContent = 'Subscription Service';
     if (message) message.textContent = 'Sign up for our subscription service to get regular deliveries of your favorite treats.';
@@ -1588,14 +1654,14 @@ function showSubscriptionModal() {
 }
 
 function closeQuickOrder() {
-    const modal = document.getElementById('quick-order-modal');
+    const modal = safeGetElement('quick-order-modal');
     if (modal) modal.style.display = 'none';
 }
 
 function submitQuickOrder() {
-    const name = document.getElementById('quick-order-name')?.value;
-    const phone = document.getElementById('quick-order-phone')?.value;
-    const details = document.getElementById('quick-order-details')?.value;
+    const name = safeGetElement('quick-order-name')?.value;
+    const phone = safeGetElement('quick-order-phone')?.value;
+    const details = safeGetElement('quick-order-details')?.value;
     
     if (!name || !phone) {
         showNotification('Please fill in your name and phone number!', 'error');
@@ -1604,9 +1670,9 @@ function submitQuickOrder() {
     
     showNotification('Order request submitted! We will contact you shortly.', 'success');
     
-    const nameField = document.getElementById('quick-order-name');
-    const phoneField = document.getElementById('quick-order-phone');
-    const detailsField = document.getElementById('quick-order-details');
+    const nameField = safeGetElement('quick-order-name');
+    const phoneField = safeGetElement('quick-order-phone');
+    const detailsField = safeGetElement('quick-order-details');
     
     if (nameField) nameField.value = '';
     if (phoneField) phoneField.value = '';
@@ -1618,7 +1684,7 @@ function submitQuickOrder() {
 // ==================== NOTIFICATION FUNCTIONS ====================
 
 function showNotification(message, type = 'success') {
-    document.querySelectorAll('.notification').forEach(el => el.remove());
+    document.querySelectorAll('.notification').forEach(el => safeRemoveElement(el));
     
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
@@ -1633,7 +1699,7 @@ function showNotification(message, type = 'success') {
         <span>${message}</span>
     `;
     
-    document.body.appendChild(notification);
+    safeAppendChild(document.body, notification);
     
     setTimeout(() => {
         notification.classList.add('show');
@@ -1642,9 +1708,7 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => {
-            if (notification.parentNode) {
-                document.body.removeChild(notification);
-            }
+            safeRemoveElement(notification);
         }, 300);
     }, 3000);
 }
@@ -1659,9 +1723,9 @@ function viewProfile() {
     
     console.log('Opening profile modal for user:', currentUser.name);
     
-    const existingModal = document.getElementById('profile-modal');
+    const existingModal = safeGetElement('profile-modal');
     if (existingModal) {
-        existingModal.remove();
+        safeRemoveElement(existingModal);
     }
     
     let addressDisplay = 'Not provided';
@@ -1762,9 +1826,9 @@ function openEditProfileModal() {
     
     closeModal('profile-modal');
     
-    const existingModal = document.getElementById('edit-profile-modal');
+    const existingModal = safeGetElement('edit-profile-modal');
     if (existingModal) {
-        existingModal.remove();
+        safeRemoveElement(existingModal);
     }
     
     let addressText = '';
@@ -1961,13 +2025,13 @@ function setupEventListeners() {
     if (mobileMenuBtn) {
         mobileMenuBtn.addEventListener('click', function(e) {
             e.stopPropagation();
-            nav.classList.toggle('active');
+            if (nav) nav.classList.toggle('active');
         });
     }
     
     document.addEventListener('click', function(e) {
         if (nav && nav.classList.contains('active') && 
-            !nav.contains(e.target) && 
+            mobileMenuBtn && !nav.contains(e.target) && 
             !mobileMenuBtn.contains(e.target)) {
             nav.classList.remove('active');
         }
