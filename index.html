@@ -236,7 +236,7 @@
                         </ul>
                         <div class="product-price">
                             <span class="price">₦4,000</span>
-                            <button class="btn" onclick="openComboModal('Spaghetti', 4000, './IMAGE/SPAG.jpg')">View Combo</button>
+                            <button class="btn" onclick="openComboModal('Spaghetti', 4000, './IMAGE/spag.jpg')">View Combo</button>
                         </div>
                     </div>
                 </div>
@@ -489,7 +489,7 @@
         </div>
     </footer>
 
-    <!-- Login Modal -->
+    <!-- Login Modal (UPDATED with Password Toggle and Google Sign-In) -->
     <div class="modal" id="login-modal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
@@ -502,23 +502,36 @@
                         <label for="login-email">Email</label>
                         <input type="email" id="login-email" class="form-control" required>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group password-field">
                         <label for="login-password">Password</label>
-                        <input type="password" id="login-password" class="form-control" required>
+                        <div style="position: relative;">
+                            <input type="password" id="login-password" class="form-control" required style="padding-right: 40px;">
+                            <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('login-password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999;"></i>
+                        </div>
                     </div>
                     <div class="text-right">
                         <a href="javascript:void(0)" onclick="openForgotPasswordModal()" class="forgot-password">Forgot Password?</a>
                     </div>
                     <button type="submit" class="btn btn-full-width">Login</button>
-                    <p class="text-center mt-3">
-                        Don't have an account? <a href="#" onclick="openRegisterModal(); closeModal('login-modal');">Register</a>
-                    </p>
                 </form>
+                
+                <!-- Google Sign-In Button (NEW) -->
+                <div class="divider" style="text-align: center; margin: 20px 0; position: relative;">
+                    <span style="background: white; padding: 0 10px; color: #999;">OR</span>
+                </div>
+                
+                <button onclick="handleGoogleSignIn()" class="btn btn-google" style="width: 100%; padding: 12px; background: white; border: 2px solid #4285f4; color: #4285f4; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                    <i class="fab fa-google" style="color: #4285f4;"></i> Sign in with Google
+                </button>
+                
+                <p class="text-center mt-3">
+                    Don't have an account? <a href="#" onclick="openRegisterModal(); closeModal('login-modal');">Register</a>
+                </p>
             </div>
         </div>
     </div>
 
-   <!-- Register Modal -->
+   <!-- Register Modal (UPDATED with Password Toggle) -->
 <div class="modal" id="register-modal">
     <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
@@ -545,18 +558,30 @@
                     </small>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group password-field">
                     <label for="register-password">Password * (min. 6 characters)</label>
-                    <input type="password" id="register-password" class="form-control" placeholder="••••••" required minlength="6">
+                    <div style="position: relative;">
+                        <input type="password" id="register-password" class="form-control" placeholder="••••••" required minlength="6" style="padding-right: 40px;">
+                        <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('register-password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999;"></i>
+                    </div>
                 </div>
                 
                 <button type="submit" class="btn btn-full-width">Register</button>
-                
-                <p class="text-center mt-3">
-                    Already have an account? 
-                    <a href="#" onclick="openLoginModal(); closeModal('register-modal');">Login</a>
-                </p>
             </form>
+            
+            <!-- Google Sign-In Button for Register (NEW) -->
+            <div class="divider" style="text-align: center; margin: 20px 0; position: relative;">
+                <span style="background: white; padding: 0 10px; color: #999;">OR</span>
+            </div>
+            
+            <button onclick="handleGoogleSignIn()" class="btn btn-google" style="width: 100%; padding: 12px; background: white; border: 2px solid #4285f4; color: #4285f4; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                <i class="fab fa-google" style="color: #4285f4;"></i> Sign up with Google
+            </button>
+            
+            <p class="text-center mt-3">
+                Already have an account? 
+                <a href="#" onclick="openLoginModal(); closeModal('register-modal');">Login</a>
+            </p>
         </div>
     </div>
 </div>
@@ -583,7 +608,7 @@
         </div>
     </div>
 
-    <!-- Reset Password Modal -->
+    <!-- Reset Password Modal (UPDATED with Password Toggle) -->
     <div class="modal" id="reset-password-modal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
@@ -592,13 +617,19 @@
             </div>
             <div class="modal-body">
                 <form id="reset-password-form" onsubmit="handleResetPassword(event)">
-                    <div class="form-group">
+                    <div class="form-group password-field">
                         <label for="reset-new-password">New Password</label>
-                        <input type="password" id="reset-new-password" class="form-control" required minlength="6">
+                        <div style="position: relative;">
+                            <input type="password" id="reset-new-password" class="form-control" required minlength="6" style="padding-right: 40px;">
+                            <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('reset-new-password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999;"></i>
+                        </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group password-field">
                         <label for="reset-confirm-password">Confirm Password</label>
-                        <input type="password" id="reset-confirm-password" class="form-control" required minlength="6">
+                        <div style="position: relative;">
+                            <input type="password" id="reset-confirm-password" class="form-control" required minlength="6" style="padding-right: 40px;">
+                            <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('reset-confirm-password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999;"></i>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-full-width">Reset Password</button>
                 </form>
@@ -880,6 +911,8 @@
             </div>
         </div>
     </div>
+    
+
     <script src="https://js.paystack.co/v1/inline.js"></script>
     <script src="./APP/app.js"></script>
     <script src="./APP/deliveryService.js"></script>

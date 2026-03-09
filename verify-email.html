@@ -39,6 +39,12 @@
             text-align: center;
         }
 
+        .logo {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
         .icon {
             font-size: 5rem;
             margin-bottom: 20px;
@@ -50,6 +56,10 @@
 
         .icon.error {
             color: var(--error);
+        }
+
+        .icon.info {
+            color: var(--primary);
         }
 
         h1 {
@@ -73,11 +83,24 @@
             border-radius: 30px;
             font-weight: bold;
             transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
         }
 
         .btn:hover {
             background: var(--primary-dark);
             transform: translateY(-2px);
+        }
+
+        .btn.secondary {
+            background: #f0f0f0;
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .btn.secondary:hover {
+            background: #e0e0e0;
         }
 
         .loading {
@@ -95,52 +118,220 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .test-mode-banner {
+            background-color: #FFB88C;
+            color: #1F1F1F;
+            padding: 10px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container" id="container">
+        <div class="logo">
+            <i class="fas fa-cookie-bite"></i>
+        </div>
         <div class="loading" id="loading"></div>
         <div id="content" style="display: none;"></div>
     </div>
 
     <script>
-        const API_BASE_URL = 'http://localhost:5000/api';
-        
-        async function verifyEmail() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
+        // Firebase configuration - 
+        const firebaseConfig = {
+             apiKey: "AIzaSyD0g5NGxzPrC98MFtTx4ZOePrHGGHqM0rU",
+            authDomain: "beedaht-sweet-treats.firebaseapp.com",
+            projectId: "beedaht-sweet-treats",
+            storageBucket: "beedaht-sweet-treats.firebasestorage.app",
+            messagingSenderId: "762048249430",
+            appId: "1:762048249430:web:9e3b7c33dc517d6011c5f7"
+        };
+
+        // IMPORTANT: Replace with your actual Railway backend URL
+        const API_BASE_URL = 'https://backend-e-commerce-production-b9b1.up.railway.app/api';
+
+        // Check if we're in local development
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1';
+
+        console.log('Running on:', window.location.hostname);
+
+        // Get parameters from URL (Firebase style)
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        const oobCode = urlParams.get('oobCode');
+        const apiKey = urlParams.get('apiKey');
+
+        console.log('Mode:', mode);
+        console.log('oobCode:', oobCode);
+
+        // For LOCAL TESTING ONLY
+        if (isLocalhost && !oobCode) {
+            console.log('⚠️ LOCAL TEST MODE: Using fake verification for testing');
             
-            if (!token) {
-                showError('Invalid verification link');
+            // Add test mode banner
+            const container = document.getElementById('container');
+            const banner = document.createElement('div');
+            banner.className = 'test-mode-banner';
+            banner.innerHTML = '🧪 TEST MODE: Email verification simulation';
+            container.prepend(banner);
+            
+            // Show test options
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            document.getElementById('content').innerHTML = `
+                <div class="icon info"><i class="fas fa-flask"></i></div>
+                <h1>Test Mode</h1>
+                <p>Choose an option to test the verification flow:</p>
+                <div class="button-group">
+                    <button onclick="testVerification(true)" class="btn">✅ Simulate Success</button>
+                    <button onclick="testVerification(false)" class="btn secondary">❌ Simulate Failure</button>
+                </div>
+            `;
+        } else {
+            // Real verification - proceed normally
+            verifyEmail();
+        }
+
+        // Test function
+        function testVerification(success) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            
+            setTimeout(() => {
+                if (success) {
+                    showSuccess('✓ Test Mode: Email verified successfully!');
+                } else {
+                    showError('Test Mode: Verification failed (simulated)');
+                }
+            }, 1500);
+        }
+
+        // Main verification function
+        async function verifyEmail() {
+            // Check if this is a Firebase verification link
+            if (mode !== 'verifyEmail' && mode !== 'verify') {
+                // Try to handle as Firebase verification anyway
+                console.log('Mode not specified, trying to verify with oobCode only');
+            }
+            
+            if (!oobCode) {
+                showError('Invalid verification link. No verification code found.');
                 return;
             }
-            
+
             try {
-                const response = await fetch(`${API_BASE_URL}/auth/verify-email/${token}`);
-                const data = await response.json();
+                // Load Firebase
+                await loadFirebase();
                 
-                if (data.success) {
-                    showSuccess();
-                } else {
-                    showError(data.message || 'Verification failed');
+                console.log('Attempting to verify email with oobCode:', oobCode);
+                
+                // Apply the verification code
+                // Note: This will sign in the user temporarily to verify the email
+                await firebase.auth().applyActionCode(oobCode);
+                
+                console.log('Email verified successfully via Firebase');
+                
+                // Optional: Notify your Railway backend
+                try {
+                    const response = await fetch(`${API_BASE_URL}/auth/email-verified`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            oobCode: oobCode,
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log('Backend notified successfully');
+                    }
+                } catch (backendError) {
+                    console.log('Backend notification failed (optional)', backendError);
                 }
+                
+                showSuccess();
+                
             } catch (error) {
-                showError('Network error. Please try again.');
+                console.error('Verification error:', error);
+                
+                let errorMessage = 'Email verification failed. ';
+                
+                // Handle specific Firebase errors
+                if (error.code === 'auth/expired-action-code') {
+                    errorMessage = 'This verification link has expired. Please request a new one.';
+                } else if (error.code === 'auth/invalid-action-code') {
+                    errorMessage = 'This verification link is invalid. Please request a new one.';
+                } else if (error.code === 'auth/user-disabled') {
+                    errorMessage = 'This account has been disabled.';
+                } else if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'User not found.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                showError(errorMessage);
             }
         }
-        
-        function showSuccess() {
+
+        // Function to load Firebase dynamically
+        function loadFirebase() {
+            return new Promise((resolve, reject) => {
+                // Check if Firebase is already loaded
+                if (typeof firebase !== 'undefined') {
+                    // Check if already initialized
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                    }
+                    resolve();
+                    return;
+                }
+                
+                // Load Firebase App
+                const appScript = document.createElement('script');
+                appScript.src = 'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js';
+                appScript.onload = () => {
+                    // Load Firebase Auth
+                    const authScript = document.createElement('script');
+                    authScript.src = 'https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js';
+                    authScript.onload = () => {
+                        // Initialize Firebase
+                        firebase.initializeApp(firebaseConfig);
+                        console.log('Firebase initialized successfully');
+                        resolve();
+                    };
+                    authScript.onerror = reject;
+                    document.head.appendChild(authScript);
+                };
+                appScript.onerror = reject;
+                document.head.appendChild(appScript);
+            });
+        }
+
+        function showSuccess(message = 'Your email has been successfully verified. You can now log in to your account.') {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
             document.getElementById('content').innerHTML = `
                 <div class="icon success"><i class="fas fa-check-circle"></i></div>
                 <h1>Email Verified!</h1>
-                <p>Your email has been successfully verified. You can now log in to your account.</p>
+                <p>${message}</p>
                 <a href="index.html" class="btn">Go to Login</a>
             `;
         }
-        
+
         function showError(message) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
@@ -148,11 +339,12 @@
                 <div class="icon error"><i class="fas fa-times-circle"></i></div>
                 <h1>Verification Failed</h1>
                 <p>${message}</p>
-                <a href="index.html" class="btn">Back to Home</a>
+                <div class="button-group">
+                    <a href="index.html" class="btn">Back to Home</a>
+                    <a href="resend-verification.html" class="btn secondary">Resend Email</a>
+                </div>
             `;
         }
-        
-        verifyEmail();
     </script>
 </body>
 </html>

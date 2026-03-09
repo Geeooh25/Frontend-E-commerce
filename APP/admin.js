@@ -31,7 +31,17 @@ async function checkAdminAccess() {
     const token = localStorage.getItem('token');
     console.log('Token exists:', !!token);
     
+    // Check if we were redirected here after login
+    const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+    if (redirectUrl) {
+        // Clear it since we're already here
+        sessionStorage.removeItem('redirectAfterLogin');
+        console.log('Redirect URL cleared');
+    }
+    
     if (!token) {
+        // Save the current page to redirect back after login
+        sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
         showNotification('Please login first', 'error');
         setTimeout(() => window.location.href = 'index.html', 2000);
         return;
@@ -70,6 +80,7 @@ async function checkAdminAccess() {
 
 function logout() {
     localStorage.removeItem('token');
+    sessionStorage.removeItem('redirectAfterLogin'); // Clear any saved redirect
     window.location.href = 'index.html';
 }
 

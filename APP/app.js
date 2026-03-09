@@ -37,6 +37,7 @@ let quantity = 1;
 let comboQuantity = 1;
 let currentUser = null;
 let token = localStorage.getItem('token');
+let selectedDeliveryMethod = 'delivery'; // Default to delivery
 
 // Product data (will be fetched from API)
 let products = [];
@@ -124,6 +125,134 @@ function checkAuthStatus() {
     }
 }
 
+// ==================== PASSWORD TOGGLE FUNCTION ====================
+function togglePasswordVisibility(inputId, icon) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+}
+
+// ==================== GOOGLE SIGN-IN FUNCTION ====================
+async function handleGoogleSignIn() {
+    try {
+        // Check if Firebase Auth is available
+        if (!firebaseAuth) {
+            console.error('Firebase Auth not available');
+            showNotification('Authentication service unavailable', 'error');
+            return;
+        }
+
+        // Create Google provider
+        const provider = new firebase.auth.GoogleAuthProvider();
+        
+        // Add scopes if needed
+        provider.addScope('profile');
+        provider.addScope('email');
+        
+        // Set custom parameters
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+        
+        console.log('Opening Google sign-in popup...');
+        
+        // Show loading notification
+        showNotification('Opening Google sign-in...', 'info');
+        
+        // Sign in with popup
+        const result = await firebaseAuth.signInWithPopup(provider);
+        
+        // Get user info
+        const user = result.user;
+        console.log('Google sign-in successful:', user.email);
+        console.log('User details:', {
+            name: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL
+        });
+        
+        // Get token for backend
+        const idToken = await user.getIdToken();
+        console.log('Got Firebase ID token');
+        
+        // Send token to your backend
+        showNotification('Completing sign-in...', 'info');
+        
+        const response = await fetch(`${API_BASE_URL}/auth/firebase/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ idToken })
+        });
+        
+        const data = await response.json();
+        console.log('Backend response:', data);
+        
+        if (data.success) {
+            localStorage.setItem('token', data.token);
+            currentUser = data.user;
+            updateAuthUI(true);
+            
+            // Close any open modals
+            closeModal('login-modal');
+            closeModal('register-modal');
+            
+            showNotification(`Welcome, ${user.displayName || 'User'}!`, 'success');
+            
+            // Check for redirect after login (for admin access)
+            const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+            if (redirectUrl) {
+                sessionStorage.removeItem('redirectAfterLogin');
+                console.log('Redirecting to:', redirectUrl);
+                window.location.href = redirectUrl;
+            }
+            
+            // Load user's cart from server
+            loadUserCart();
+        } else {
+            console.error('Backend login failed:', data.message);
+            showNotification(data.message || 'Google sign-in failed', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Google sign-in error details:', {
+            code: error.code,
+            message: error.message,
+            email: error.email,
+            credential: error.credential
+        });
+        
+        let errorMessage = 'Google sign-in failed. ';
+        
+        // Handle specific Firebase errors
+        if (error.code === 'auth/popup-closed-by-user') {
+            errorMessage = 'Sign-in cancelled. Please try again.';
+        } else if (error.code === 'auth/popup-blocked') {
+            errorMessage = 'Pop-up was blocked. Please allow pop-ups for this site.';
+        } else if (error.code === 'auth/account-exists-with-different-credential') {
+            errorMessage = 'An account already exists with the same email address. Please login with your password.';
+        } else if (error.code === 'auth/cancelled-popup-request') {
+            errorMessage = 'Sign-in cancelled. Please try again.';
+        } else if (error.code === 'auth/network-request-failed') {
+            errorMessage = 'Network error. Please check your connection.';
+        } else {
+            errorMessage += error.message || 'Unknown error occurred';
+        }
+        
+        showNotification(errorMessage, 'error');
+    }
+}
+
 function updateAuthUI(isLoggedIn) {
     console.log('Updating auth UI, logged in:', isLoggedIn);
     
@@ -163,7 +292,7 @@ function openLoginModal() {
     const existingModal = safeGetElement('login-modal');
     if (existingModal) safeRemoveElement(existingModal);
     
-    // Create login modal dynamically
+    // Create login modal dynamically with Google button
     const modalHtml = `
         <div class="modal" id="login-modal" style="display: block;">
             <div class="modal-content" style="max-width: 400px;">
@@ -177,18 +306,32 @@ function openLoginModal() {
                             <label for="login-email">Email</label>
                             <input type="email" id="login-email" class="form-control" required>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group password-field">
                             <label for="login-password">Password</label>
-                            <input type="password" id="login-password" class="form-control" required>
+                            <div style="position: relative;">
+                                <input type="password" id="login-password" class="form-control" required style="padding-right: 40px;">
+                                <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('login-password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999;"></i>
+                            </div>
                         </div>
                         <div class="text-right">
                             <a href="javascript:void(0)" onclick="openForgotPasswordModal()" class="forgot-password">Forgot Password?</a>
                         </div>
                         <button type="submit" class="btn btn-full-width">Login</button>
-                        <p style="text-align: center; margin-top: 15px;">
-                            Don't have an account? <a href="#" onclick="openRegisterModal(); closeModal('login-modal');">Register</a>
-                        </p>
                     </form>
+                    
+                    <!-- Google Sign-In Button -->
+                    <div class="divider" style="text-align: center; margin: 20px 0; position: relative;">
+                        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 0;">
+                        <span style="position: relative; top: -12px; background: white; padding: 0 10px; color: #999; font-size: 14px;">OR</span>
+                    </div>
+                    
+                    <button onclick="handleGoogleSignIn()" class="btn btn-google" style="width: 100%; padding: 12px; background: white; border: 2px solid #4285f4; color: #4285f4; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s;">
+                        <i class="fab fa-google" style="color: #4285f4;"></i> Sign in with Google
+                    </button>
+                    
+                    <p style="text-align: center; margin-top: 15px;">
+                        Don't have an account? <a href="#" onclick="openRegisterModal(); closeModal('login-modal');">Register</a>
+                    </p>
                 </div>
             </div>
         </div>
@@ -221,15 +364,29 @@ function openRegisterModal() {
                             <label for="register-phone">Phone</label>
                             <input type="tel" id="register-phone" class="form-control" required>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group password-field">
                             <label for="register-password">Password</label>
-                            <input type="password" id="register-password" class="form-control" required minlength="6">
+                            <div style="position: relative;">
+                                <input type="password" id="register-password" class="form-control" required minlength="6" style="padding-right: 40px;">
+                                <i class="fas fa-eye password-toggle" onclick="togglePasswordVisibility('register-password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999;"></i>
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-full-width">Register</button>
-                        <p style="text-align: center; margin-top: 15px;">
-                            Already have an account? <a href="#" onclick="openLoginModal(); closeModal('register-modal');">Login</a>
-                        </p>
                     </form>
+                    
+                    <!-- Google Sign-In Button -->
+                    <div class="divider" style="text-align: center; margin: 20px 0; position: relative;">
+                        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 0;">
+                        <span style="position: relative; top: -12px; background: white; padding: 0 10px; color: #999; font-size: 14px;">OR</span>
+                    </div>
+                    
+                    <button onclick="handleGoogleSignIn()" class="btn btn-google" style="width: 100%; padding: 12px; background: white; border: 2px solid #4285f4; color: #4285f4; border-radius: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s;">
+                        <i class="fab fa-google" style="color: #4285f4;"></i> Sign up with Google
+                    </button>
+                    
+                    <p style="text-align: center; margin-top: 15px;">
+                        Already have an account? <a href="#" onclick="openLoginModal(); closeModal('register-modal');">Login</a>
+                    </p>
                 </div>
             </div>
         </div>
@@ -272,7 +429,14 @@ async function handleLogin(event) {
             closeModal('login-modal');
             showNotification('Login successful!', 'success');
             
-            // Load user's cart from server 
+            // Check for redirect after login (for admin access)
+            const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
+            if (redirectUrl) {
+                sessionStorage.removeItem('redirectAfterLogin');
+                window.location.href = redirectUrl;
+            }
+            
+            // Load user's cart from server
             loadUserCart();
         } else {
             showNotification(data.message, 'error');
@@ -869,12 +1033,23 @@ function updateCartDisplay() {
         safeAppendChild(cartItemsContainer, cartItemElement);
     });
     
+    // Calculate delivery fee based on selected method
     let delivery = { fee: 0, message: 'Delivery: ₦0' };
-    if (typeof deliveryService !== 'undefined') {
-        delivery = deliveryService.calculateFee(subtotal);
+    
+    // Check if delivery method is set in session or default to delivery
+    const savedMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
+    selectedDeliveryMethod = savedMethod;
+    
+    if (selectedDeliveryMethod === 'pickup') {
+        delivery.fee = 0;
+        delivery.message = 'Store Pickup: FREE';
     } else {
-        delivery.fee = DELIVERY_FEE;
-        delivery.message = `Delivery Fee: ₦${DELIVERY_FEE}`;
+        if (typeof deliveryService !== 'undefined') {
+            delivery = deliveryService.calculateFee(subtotal);
+        } else {
+            delivery.fee = DELIVERY_FEE;
+            delivery.message = `Delivery Fee: ₦${DELIVERY_FEE}`;
+        }
     }
     
     const total = subtotal + delivery.fee;
@@ -896,7 +1071,23 @@ function updateCartDisplay() {
             bannerHtml = deliveryService.getDeliveryBannerHTML(subtotal);
         }
         
+        // Add delivery method selector
+        const deliverySelector = `
+            <div class="delivery-method-selector" style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Delivery Method:</label>
+                <div style="display: flex; gap: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="radio" name="deliveryMethod" value="delivery" ${selectedDeliveryMethod === 'delivery' ? 'checked' : ''} onchange="setDeliveryMethod('delivery')"> Home Delivery
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="radio" name="deliveryMethod" value="pickup" ${selectedDeliveryMethod === 'pickup' ? 'checked' : ''} onchange="setDeliveryMethod('pickup')"> Store Pickup
+                    </label>
+                </div>
+            </div>
+        `;
+        
         deliveryInfoEl.innerHTML = `
+            ${deliverySelector}
             <div class="delivery-summary">
                 <div class="delivery-row">
                     <span>Subtotal:</span>
@@ -912,6 +1103,14 @@ function updateCartDisplay() {
     }
     
     cartTotalElement.textContent = total.toLocaleString();
+}
+
+// Set delivery method
+function setDeliveryMethod(method) {
+    selectedDeliveryMethod = method;
+    sessionStorage.setItem('deliveryMethod', method);
+    updateCartDisplay();
+    console.log('Delivery method set to:', method);
 }
 
 function updateQuantity(itemId, change) {
@@ -1010,7 +1209,7 @@ async function proceedToCheckout() {
         safeAppendChild(checkoutSummary, itemElement);
     });
     
-    // ========== FIXED DELIVERY SECTION INSERTION ==========
+    // ========== FIXED DELIVERY SECTION INSERTION WITH PICKUP OPTION ==========
     if (typeof deliveryService !== 'undefined') {
         const checkoutModal = safeGetElement('checkout-modal');
         if (checkoutModal) {
@@ -1023,10 +1222,44 @@ async function proceedToCheckout() {
                     safeRemoveElement(existingSection);
                 }
                 
-                // Create new delivery section
+                // Get selected delivery method
+                const savedMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
+                
+                // Create new delivery section with pickup option
                 const deliverySection = document.createElement('div');
                 deliverySection.id = 'delivery-section';
-                deliverySection.innerHTML = deliveryService.getDeliveryOptionsHTML(subtotal);
+                
+                // Custom delivery options HTML that includes pickup
+                const deliveryHtml = `
+                    <div class="form-group form-row">
+                        <h3>Delivery Method</h3>
+                        <div class="delivery-options" style="margin-bottom: 20px;">
+                            <div class="delivery-option" onclick="selectDeliveryMethod('delivery')" style="border: 2px solid ${savedMethod === 'delivery' ? '#FFB88C' : '#e0e0e0'}; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; background: ${savedMethod === 'delivery' ? '#fff9f5' : 'white'};">
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <input type="radio" name="checkoutDeliveryMethod" value="delivery" ${savedMethod === 'delivery' ? 'checked' : ''} style="width: auto;">
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0 0 5px;">Home Delivery</h4>
+                                        <p style="margin: 0; color: #666;">Get your order delivered to your doorstep</p>
+                                        <p style="margin: 5px 0 0; font-weight: bold; color: #333;">Fee: ${savedMethod === 'delivery' ? (subtotal >= 5000 ? 'FREE' : `₦${DELIVERY_FEE}`) : `₦${DELIVERY_FEE}`}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="delivery-option" onclick="selectDeliveryMethod('pickup')" style="border: 2px solid ${savedMethod === 'pickup' ? '#FFB88C' : '#e0e0e0'}; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; background: ${savedMethod === 'pickup' ? '#fff9f5' : 'white'};">
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <input type="radio" name="checkoutDeliveryMethod" value="pickup" ${savedMethod === 'pickup' ? 'checked' : ''} style="width: auto;">
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0 0 5px;">Store Pickup</h4>
+                                        <p style="margin: 0; color: #666;">Pick up your order from our bakery</p>
+                                        <p style="margin: 5px 0 0; font-weight: bold; color: #28a745;">Fee: FREE</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                deliverySection.innerHTML = deliveryHtml;
                 
                 // Find payment section
                 const paymentSection = checkoutBody.querySelector('.payment-options')?.closest('.form-group');
@@ -1051,12 +1284,21 @@ async function proceedToCheckout() {
         }
     }
     
-    // Calculate total with delivery
-    let deliveryFee = DELIVERY_FEE;
-    if (typeof deliveryService !== 'undefined') {
-        const delivery = deliveryService.calculateFee(subtotal);
-        deliveryFee = delivery.fee;
+    // Calculate total with delivery based on selected method
+    const savedMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
+    let deliveryFee = 0;
+    
+    if (savedMethod === 'pickup') {
+        deliveryFee = 0;
+    } else {
+        if (typeof deliveryService !== 'undefined') {
+            const delivery = deliveryService.calculateFee(subtotal);
+            deliveryFee = delivery.fee;
+        } else {
+            deliveryFee = DELIVERY_FEE;
+        }
     }
+    
     const total = subtotal + deliveryFee;
     
     checkoutTotal.textContent = total.toLocaleString();
@@ -1071,9 +1313,19 @@ async function proceedToCheckout() {
     if (emailField) emailField.value = currentUser.email || '';
     if (phoneField) phoneField.value = currentUser.phone || '';
     
-    if (addressField && currentUser.address) {
-        addressField.value = 
-            `${currentUser.address.street || ''}, ${currentUser.address.city || ''}, ${currentUser.address.state || ''}`;
+    // If pickup is selected, address might be optional
+    if (addressField) {
+        if (savedMethod === 'pickup') {
+            addressField.placeholder = 'Address not required for pickup';
+            addressField.required = false;
+        } else {
+            addressField.required = true;
+        }
+        
+        if (currentUser.address) {
+            addressField.value = 
+                `${currentUser.address.street || ''}, ${currentUser.address.city || ''}, ${currentUser.address.state || ''}`;
+        }
     }
     
     // Show checkout modal
@@ -1084,31 +1336,93 @@ async function proceedToCheckout() {
     if (checkoutModal) checkoutModal.style.display = 'block';
 }
 
+// Select delivery method in checkout
+function selectDeliveryMethod(method) {
+    selectedDeliveryMethod = method;
+    sessionStorage.setItem('deliveryMethod', method);
+    
+    // Update radio buttons
+    const radios = document.querySelectorAll('input[name="checkoutDeliveryMethod"]');
+    radios.forEach(radio => {
+        if (radio.value === method) {
+            radio.checked = true;
+        }
+    });
+    
+    // Update delivery option styling
+    const options = document.querySelectorAll('.delivery-option');
+    options.forEach(option => {
+        const radio = option.querySelector('input');
+        if (radio && radio.value === method) {
+            option.style.borderColor = '#FFB88C';
+            option.style.background = '#fff9f5';
+        } else {
+            option.style.borderColor = '#e0e0e0';
+            option.style.background = 'white';
+        }
+    });
+    
+    // Update address field requirement
+    const addressField = safeGetElement('checkout-address');
+    if (addressField) {
+        if (method === 'pickup') {
+            addressField.placeholder = 'Address not required for pickup';
+            addressField.required = false;
+        } else {
+            addressField.placeholder = 'Street, City, State';
+            addressField.required = true;
+        }
+    }
+    
+    // Recalculate total
+    const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const checkoutTotal = safeGetElement('checkout-total');
+    
+    if (checkoutTotal) {
+        let deliveryFee = 0;
+        if (method === 'delivery') {
+            if (typeof deliveryService !== 'undefined') {
+                const delivery = deliveryService.calculateFee(subtotal);
+                deliveryFee = delivery.fee;
+            } else {
+                deliveryFee = DELIVERY_FEE;
+            }
+        }
+        checkoutTotal.textContent = (subtotal + deliveryFee).toLocaleString();
+    }
+    
+    console.log('Checkout delivery method set to:', method);
+}
+
 // Update checkout total when delivery method changes
 function updateCheckoutTotal() {
     const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    if (typeof deliveryService !== 'undefined') {
-        const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
-        const delivery = deliveryService.calculateFee(subtotal, selectedMethod);
-        const total = subtotal + delivery.fee;
-        
-        const checkoutTotalEl = safeGetElement('checkout-total');
-        if (checkoutTotalEl) {
-            checkoutTotalEl.textContent = total.toLocaleString();
+    const method = sessionStorage.getItem('deliveryMethod') || 'delivery';
+    let deliveryFee = 0;
+    
+    if (method === 'pickup') {
+        deliveryFee = 0;
+    } else {
+        if (typeof deliveryService !== 'undefined') {
+            const delivery = deliveryService.calculateFee(subtotal);
+            deliveryFee = delivery.fee;
+        } else {
+            deliveryFee = DELIVERY_FEE;
         }
-        
-        const deliveryBanner = document.querySelector('#checkout-modal .delivery-banner');
-        if (deliveryBanner && deliveryService.getDeliveryBannerHTML) {
-            const newBanner = deliveryService.getDeliveryBannerHTML(subtotal);
-            if (newBanner) {
-                deliveryBanner.outerHTML = newBanner;
-            }
-        }
+    }
+    
+    const total = subtotal + deliveryFee;
+    
+    const checkoutTotalEl = safeGetElement('checkout-total');
+    if (checkoutTotalEl) {
+        checkoutTotalEl.textContent = total.toLocaleString();
     }
 }
 
 window.updateCheckoutTotal = updateCheckoutTotal;
+window.selectDeliveryMethod = selectDeliveryMethod;
+window.setDeliveryMethod = setDeliveryMethod;
 
 // ==================== ORDER FUNCTIONS WITH PAYSTACK ====================
 
@@ -1156,13 +1470,22 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
     
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    let deliveryFee = DELIVERY_FEE;
+    // Get delivery method
+    const deliveryMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
+    let deliveryFee = 0;
     
-    if (typeof deliveryService !== 'undefined') {
-        const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
-        const delivery = deliveryService.calculateFee(itemsPrice, selectedMethod);
-        deliveryFee = delivery.fee;
-        console.log(`✅ Delivery fee calculated: ₦${deliveryFee} - ${delivery.message}`);
+    if (deliveryMethod === 'pickup') {
+        deliveryFee = 0;
+        console.log('✅ Pickup selected - no delivery fee');
+    } else {
+        if (typeof deliveryService !== 'undefined') {
+            const delivery = deliveryService.calculateFee(itemsPrice);
+            deliveryFee = delivery.fee;
+            console.log(`✅ Delivery fee calculated: ₦${deliveryFee} - ${delivery.message}`);
+        } else {
+            deliveryFee = DELIVERY_FEE;
+            console.log(`✅ Standard delivery fee: ₦${DELIVERY_FEE}`);
+        }
     }
     
     const totalPrice = itemsPrice + deliveryFee;
@@ -1182,7 +1505,8 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
                 paymentMethod: paymentMethod,
                 itemsPrice,
                 deliveryPrice: deliveryFee,
-                totalPrice
+                totalPrice,
+                deliveryMethod: deliveryMethod // Add delivery method to order
             })
         });
         
@@ -1229,12 +1553,20 @@ async function processPaystackPayment(name, email, phone, addressText) {
 
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    let deliveryFee = DELIVERY_FEE;
-    if (typeof deliveryService !== 'undefined') {
-        const selectedMethod = deliveryService.getDeliveryMethod ? deliveryService.getDeliveryMethod() : 'standard';
-        const delivery = deliveryService.calculateFee(itemsPrice, selectedMethod);
-        deliveryFee = delivery.fee;
-        console.log(`✅ Delivery fee calculated: ₦${deliveryFee} - ${delivery.message}`);
+    // Get delivery method
+    const deliveryMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
+    let deliveryFee = 0;
+    
+    if (deliveryMethod === 'pickup') {
+        deliveryFee = 0;
+        console.log('✅ Pickup selected - no delivery fee for Paystack');
+    } else {
+        if (typeof deliveryService !== 'undefined') {
+            const delivery = deliveryService.calculateFee(itemsPrice);
+            deliveryFee = delivery.fee;
+        } else {
+            deliveryFee = DELIVERY_FEE;
+        }
     }
     
     const totalPrice = itemsPrice + deliveryFee;
@@ -1263,7 +1595,8 @@ async function processPaystackPayment(name, email, phone, addressText) {
                 paymentMethod: 'card',
                 itemsPrice,
                 deliveryPrice: deliveryFee,
-                totalPrice
+                totalPrice,
+                deliveryMethod: deliveryMethod // Add delivery method to order
             })
         });
 
@@ -1358,6 +1691,7 @@ async function viewMyOrders() {
                             <p>Date: ${new Date(order.createdAt).toLocaleDateString()}</p>
                             <p>Status: <span class="status-${order.orderStatus}">${order.orderStatus}</span></p>
                             <p>Total: ${CURRENCY}${order.totalPrice.toLocaleString()}</p>
+                            <p>Delivery: ${order.deliveryMethod || 'delivery'}</p>
                         </div>
                     `;
                 });
@@ -2157,3 +2491,10 @@ window.shareOnWhatsApp = shareOnWhatsApp;
 window.trackPageView = trackPageView;
 window.trackAddToCart = trackAddToCart;
 window.trackPurchase = trackPurchase;
+
+// Add new functions to global scope
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.handleGoogleSignIn = handleGoogleSignIn;
+window.setDeliveryMethod = setDeliveryMethod;
+window.selectDeliveryMethod = selectDeliveryMethod;
+window.updateCheckoutTotal = updateCheckoutTotal;
