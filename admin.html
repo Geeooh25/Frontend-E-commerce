@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -236,6 +236,7 @@
             margin-bottom: 20px;
             border-bottom: 2px solid var(--neutral-medium);
             padding-bottom: 10px;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -322,6 +323,22 @@
             color: #c62828;
         }
 
+        /* Role Badges - New */
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .role-admin {
+            background-color: var(--primary);
+            color: var(--text-dark);
+        }
+        .role-user {
+            background-color: var(--neutral-medium);
+            color: var(--text-medium);
+        }
+
         .action-icons {
             display: flex;
             gap: 10px;
@@ -351,6 +368,14 @@
 
         .action-icon.view {
             color: var(--success);
+        }
+
+        .action-icon.user-shield {
+            color: var(--primary);
+        }
+
+        .action-icon.user-shield:hover {
+            color: var(--primary-dark);
         }
 
         /* Category Grid */
@@ -708,6 +733,17 @@
                 margin: 20px auto;
                 padding: 20px;
             }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1 1 auto;
+                text-align: center;
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
         }
 
         /* Additional mobile fixes */
@@ -765,6 +801,7 @@
                     <li><a href="#" onclick="switchTab('products')">Products</a></li>
                     <li><a href="#" onclick="switchTab('categories')">Categories</a></li>
                     <li><a href="#" onclick="switchTab('orders')">Orders</a></li>
+                    <li><a href="#" onclick="switchTab('users')">Users</a></li>
                     <li><a href="index.html" target="_blank">View Store</a></li>
                 </ul>
                 
@@ -774,6 +811,7 @@
                     <a href="#" onclick="switchTab('products'); closeMobileMenu()">Products</a>
                     <a href="#" onclick="switchTab('categories'); closeMobileMenu()">Categories</a>
                     <a href="#" onclick="switchTab('orders'); closeMobileMenu()">Orders</a>
+                    <a href="#" onclick="switchTab('users'); closeMobileMenu()">Users</a>
                     <a href="index.html" target="_blank">View Store</a>
                     <a href="#" onclick="logout()">Logout</a>
                 </div>
@@ -844,6 +882,7 @@
             <div class="tab active" onclick="switchTab('products')">Products</div>
             <div class="tab" onclick="switchTab('categories')">Categories</div>
             <div class="tab" onclick="switchTab('orders')">Orders</div>
+            <div class="tab" onclick="switchTab('users')">Users</div>
         </div>
 
         <!-- Products Tab -->
@@ -899,6 +938,32 @@
                             <td colspan="6" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-shopping-bag" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
                                 <p>Loading orders...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Users Tab (New) -->
+        <div class="tab-content" id="users-tab">
+            <div class="products-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-users" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                                <p>Loading users...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -1057,6 +1122,44 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('delete-modal')">Cancel</button>
                 <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal (New) -->
+    <div class="modal" id="edit-user-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Edit User</h2>
+                <button class="close-modal" onclick="closeModal('edit-user-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-user-form" onsubmit="updateUser(event)">
+                    <input type="hidden" id="edit-user-id">
+                    <div class="form-group">
+                        <label for="edit-user-name">Name</label>
+                        <input type="text" id="edit-user-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-user-email">Email</label>
+                        <input type="email" id="edit-user-email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-user-phone">Phone</label>
+                        <input type="tel" id="edit-user-phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-user-role">Role</label>
+                        <select id="edit-user-role" class="form-control">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline" onclick="closeModal('edit-user-modal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Update User</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

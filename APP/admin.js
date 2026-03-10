@@ -7,6 +7,7 @@ let currentUser = null;
 let products = [];
 let categories = [];
 let orders = [];
+let users = []; // Added users array
 let selectedFile = null;
 
 // Initialize
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadProducts();
     loadCategories();
     loadOrders();
+    loadUsers(); // Added users load
     setupEventListeners();
     
     // Ensure products tab is active
@@ -129,6 +131,11 @@ async function loadProducts() {
             products = data.products || [];
             console.log('Products loaded:', products.length);
             displayProducts();
+            
+            // Refresh categories in modal if it's open
+            if (document.getElementById('product-modal').style.display === 'block') {
+                loadCategorySelect();
+            }
         } else {
             console.error('Failed to load products:', data.message);
             showNotification('Failed to load products: ' + (data.message || 'Unknown error'), 'error');
@@ -229,8 +236,7 @@ function displayProducts() {
     console.log('Products displayed');
 }
 
-// ==================== UPDATED CATEGORY SELECT FUNCTION ====================
-
+// ==================== FIXED CATEGORY SELECT FUNCTION ====================
 async function loadCategorySelect(selectedCategory = '') {
     const select = document.getElementById('product-category');
     if (!select) return;
@@ -238,50 +244,74 @@ async function loadCategorySelect(selectedCategory = '') {
     // Clear existing options
     select.innerHTML = '<option value="">Select Category</option>';
     
-    // load from API
+    // Set to store unique categories
+    const uniqueCategories = new Set();
+    
     try {
+        // FIRST: Load categories from database
         const response = await fetch(`${API_BASE_URL}/categories`);
         const data = await response.json();
         
         if (data.success && data.categories && data.categories.length > 0) {
             console.log('Loading categories from database:', data.categories);
-            // Use categories from database
             data.categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category.name;
-                option.textContent = category.name.charAt(0).toUpperCase() + category.name.slice(1).replace('-', ' ');
-                if (category.name === selectedCategory) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
-            });
-        } else {
-            console.log('No categories in database, using defaults');
-            // Fallback to default categories if none in database
-            const defaultCategories = [
-                'small-chops', 'cakes', 'cookies', 'pastries', 'drinks', 'combos'
-            ];
-            defaultCategories.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat;
-                option.textContent = cat.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                if (cat === selectedCategory) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
+                const categoryName = category.name;
+                uniqueCategories.add(categoryName);
             });
         }
-    } catch (error) {
-        console.error('Error loading categories:', error);
-        // Fallback to default categories on error
+        
+        // SECOND: Extract categories from existing products
+        if (products && products.length > 0) {
+            console.log('Extracting categories from products:', products.length);
+            products.forEach(product => {
+                if (product.category) {
+                    uniqueCategories.add(product.category);
+                }
+            });
+        }
+        
+        // THIRD: Add default categories as fallback
         const defaultCategories = [
             'small-chops', 'cakes', 'cookies', 'pastries', 'drinks', 'combos'
         ];
-        defaultCategories.forEach(cat => {
+        defaultCategories.forEach(cat => uniqueCategories.add(cat));
+        
+        console.log('All unique categories:', Array.from(uniqueCategories));
+        
+        // Convert Set to array and sort
+        const sortedCategories = Array.from(uniqueCategories).sort();
+        
+        // Add all categories to select
+        sortedCategories.forEach(category => {
             const option = document.createElement('option');
-            option.value = cat;
-            option.textContent = cat.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            if (cat === selectedCategory) {
+            option.value = category;
+            option.textContent = formatCategory(category);
+            if (category === selectedCategory) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading categories:', error);
+        
+        // Fallback to default categories + product categories
+        const allCategories = new Set([
+            'small-chops', 'cakes', 'cookies', 'pastries', 'drinks', 'combos'
+        ]);
+        
+        // Add from products if available
+        if (products && products.length > 0) {
+            products.forEach(product => {
+                if (product.category) allCategories.add(product.category);
+            });
+        }
+        
+        Array.from(allCategories).sort().forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = formatCategory(category);
+            if (category === selectedCategory) {
                 option.selected = true;
             }
             select.appendChild(option);
@@ -295,7 +325,15 @@ function openAddProductModal() {
     document.getElementById('product-id').value = '';
     document.getElementById('image-preview').style.display = 'none';
     document.getElementById('image-preview').src = '';
+    
+    // Reset file selection
     selectedFile = null;
+    document.getElementById('product-image').value = '';
+    
+    // Set default values
+    document.getElementById('product-instock').checked = true;
+    document.getElementById('product-featured').checked = false;
+    document.getElementById('product-stock').value = '0';
     
     loadCategorySelect();
     document.getElementById('product-modal').style.display = 'block';
@@ -341,6 +379,7 @@ function handleImageSelect(event) {
 
 document.getElementById('product-image')?.addEventListener('change', handleImageSelect);
 
+// ==================== FIXED SAVE PRODUCT FUNCTION ====================
 async function saveProduct(event) {
     event.preventDefault();
     showLoading(true);
@@ -348,22 +387,70 @@ async function saveProduct(event) {
     const productId = document.getElementById('product-id').value;
     const formData = new FormData();
     
-    formData.append('name', document.getElementById('product-name').value);
-    formData.append('category', document.getElementById('product-category').value);
-    formData.append('price', document.getElementById('product-price').value);
-    formData.append('stockQuantity', document.getElementById('product-stock').value);
-    formData.append('description', document.getElementById('product-description').value);
-    formData.append('featured', document.getElementById('product-featured').checked);
-    formData.append('inStock', document.getElementById('product-instock').checked);
+    // Get values and ensure they're properly formatted
+    const name = document.getElementById('product-name').value.trim();
+    const category = document.getElementById('product-category').value;
+    const price = document.getElementById('product-price').value;
+    const stock = document.getElementById('product-stock').value;
+    const description = document.getElementById('product-description').value.trim();
+    const featured = document.getElementById('product-featured').checked;
+    const inStock = document.getElementById('product-instock').checked;
+    
+    // DEBUG: Log what we're sending
+    console.log('========== SAVING PRODUCT ==========');
+    console.log('Product ID:', productId || 'new');
+    console.log('Name:', name);
+    console.log('Category:', category);
+    console.log('Price:', price, 'Type:', typeof price);
+    console.log('Stock:', stock, 'Type:', typeof stock);
+    console.log('Description:', description);
+    console.log('Featured:', featured);
+    console.log('In Stock:', inStock);
+    console.log('Image file:', selectedFile ? selectedFile.name : 'none');
+    
+    // Validate required fields
+    if (!name) {
+        showNotification('Product name is required', 'error');
+        showLoading(false);
+        return;
+    }
+    if (!category) {
+        showNotification('Please select a category', 'error');
+        showLoading(false);
+        return;
+    }
+    if (!price || isNaN(price) || Number(price) <= 0) {
+        showNotification('Valid price is required', 'error');
+        showLoading(false);
+        return;
+    }
+    if (!description) {
+        showNotification('Product description is required', 'error');
+        showLoading(false);
+        return;
+    }
+    
+    // Append ALL fields - convert numbers properly
+    formData.append('name', name);
+    formData.append('category', category);
+    formData.append('price', Number(price).toString()); // Ensure it's a number string
+    formData.append('stockQuantity', stock ? Number(stock).toString() : '0');
+    formData.append('description', description);
+    formData.append('featured', featured ? 'true' : 'false'); // Send as string
+    formData.append('inStock', inStock ? 'true' : 'false'); // Send as string
     
     if (selectedFile) {
         formData.append('image', selectedFile);
+        console.log('✅ Image attached:', selectedFile.name);
     }
     
     try {
         const url = productId 
             ? `${API_BASE_URL}/products/${productId}`
             : `${API_BASE_URL}/products`;
+        
+        console.log('Sending to URL:', url);
+        console.log('Method:', productId ? 'PUT' : 'POST');
         
         const response = await fetch(url, {
             method: productId ? 'PUT' : 'POST',
@@ -373,19 +460,34 @@ async function saveProduct(event) {
             body: formData
         });
         
+        console.log('Response status:', response.status);
+        
         const data = await response.json();
+        console.log('Response data:', data);
         
         if (data.success) {
             showNotification(`Product ${productId ? 'updated' : 'created'} successfully!`, 'success');
             closeModal('product-modal');
+            
+            // Reset file selection
+            selectedFile = null;
+            document.getElementById('product-image').value = '';
+            
+            // Reload data
             loadProducts();
             loadDashboardStats();
         } else {
-            showNotification(data.message || 'Failed to save product', 'error');
+            // Show detailed error
+            let errorMsg = data.message || 'Failed to save product';
+            if (data.errors) {
+                console.error('Validation errors:', data.errors);
+                errorMsg = Object.values(data.errors).join(', ');
+            }
+            showNotification(errorMsg, 'error');
         }
     } catch (error) {
         console.error('Error saving product:', error);
-        showNotification('Error saving product', 'error');
+        showNotification('Error saving product: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -743,6 +845,241 @@ function viewOrderDetails(orderId) {
     showCustomModal('Order Details', details);
 }
 
+// ==================== USERS MANAGEMENT ====================
+
+async function loadUsers() {
+    console.log('Loading users...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Users data:', data);
+        
+        if (data.success) {
+            users = data.users || [];
+            displayUsers();
+        } else {
+            console.error('Failed to load users:', data.message);
+            showNotification('Failed to load users', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showNotification('Error loading users: ' + error.message, 'error');
+        
+        const tbody = document.getElementById('users-table-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 10px;"></i>
+                        <p>Error loading users: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function displayUsers() {
+    const tbody = document.getElementById('users-table-body');
+    if (!tbody) {
+        console.error('Users table body not found!');
+        return;
+    }
+    
+    console.log('Displaying users:', users.length);
+    
+    if (!users || users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-users" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                    <p>No users found</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    users.forEach(user => {
+        const userId = user._id || user.id;
+        
+        html += `
+            <tr>
+                <td>${user.name || 'N/A'}</td>
+                <td>${user.email}</td>
+                <td>${user.phone || 'N/A'}</td>
+                <td>
+                    <span class="role-badge ${user.role === 'admin' ? 'role-admin' : 'role-user'}">
+                        ${user.role || 'user'}
+                    </span>
+                </td>
+                <td>${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                    <div class="action-icons">
+                        <i class="fas fa-edit action-icon edit" onclick="editUser('${userId}')" title="Edit User"></i>
+                        <i class="fas fa-trash action-icon delete" onclick="deleteUser('${userId}')" title="Delete User"></i>
+                        ${user.role !== 'admin' ? 
+                            `<i class="fas fa-user-shield action-icon" onclick="makeAdmin('${userId}')" title="Make Admin"></i>` : 
+                            `<i class="fas fa-user-minus action-icon" onclick="removeAdmin('${userId}')" title="Remove Admin"></i>`
+                        }
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    console.log('Users displayed');
+}
+
+async function editUser(userId) {
+    const user = users.find(u => u._id === userId);
+    if (!user) return;
+    
+    document.getElementById('edit-user-id').value = user._id;
+    document.getElementById('edit-user-name').value = user.name || '';
+    document.getElementById('edit-user-email').value = user.email || '';
+    document.getElementById('edit-user-phone').value = user.phone || '';
+    document.getElementById('edit-user-role').value = user.role || 'user';
+    
+    document.getElementById('edit-user-modal').style.display = 'block';
+}
+
+async function updateUser(event) {
+    event.preventDefault();
+    showLoading(true);
+    
+    const userId = document.getElementById('edit-user-id').value;
+    const name = document.getElementById('edit-user-name').value;
+    const email = document.getElementById('edit-user-email').value;
+    const phone = document.getElementById('edit-user-phone').value;
+    const role = document.getElementById('edit-user-role').value;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ name, email, phone, role })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('User updated successfully', 'success');
+            closeModal('edit-user-modal');
+            loadUsers();
+            loadDashboardStats();
+        } else {
+            showNotification(data.message || 'Failed to update user', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        showNotification('Error updating user', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('User deleted successfully', 'success');
+            loadUsers();
+            loadDashboardStats();
+        } else {
+            showNotification(data.message || 'Failed to delete user', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showNotification('Error deleting user', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function makeAdmin(userId) {
+    if (!confirm('Make this user an admin? They will have full access to the admin panel.')) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/make-admin`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('User is now an admin', 'success');
+            loadUsers();
+        } else {
+            showNotification(data.message || 'Failed to make admin', 'error');
+        }
+    } catch (error) {
+        console.error('Error making admin:', error);
+        showNotification('Error making admin', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function removeAdmin(userId) {
+    if (!confirm('Remove admin privileges from this user?')) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/remove-admin`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Admin privileges removed', 'success');
+            loadUsers();
+        } else {
+            showNotification(data.message || 'Failed to remove admin', 'error');
+        }
+    } catch (error) {
+        console.error('Error removing admin:', error);
+        showNotification('Error removing admin', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
 // ==================== DELETE FUNCTIONALITY ====================
 
 function openDeleteModal(type, id) {
@@ -760,7 +1097,9 @@ async function confirmDelete() {
     try {
         const url = type === 'product' 
             ? `${API_BASE_URL}/products/${id}`
-            : `${API_BASE_URL}/categories/${id}`;
+            : type === 'category'
+                ? `${API_BASE_URL}/categories/${id}`
+                : `${API_BASE_URL}/admin/users/${id}`;
         
         const response = await fetch(url, {
             method: 'DELETE',
@@ -774,9 +1113,10 @@ async function confirmDelete() {
         if (data.success) {
             showNotification(`${type} deleted successfully!`, 'success');
             closeModal('delete-modal');
+            
             if (type === 'product') {
                 loadProducts();
-            } else {
+            } else if (type === 'category') {
                 loadCategories();
             }
             loadDashboardStats();
@@ -821,6 +1161,13 @@ function switchTab(tab) {
         if (ordersTab) {
             ordersTab.classList.add('active');
             loadOrders();
+        }
+    } else if (tab === 'users') {
+        if (tabs[3]) tabs[3].classList.add('active');
+        const usersTab = document.getElementById('users-tab');
+        if (usersTab) {
+            usersTab.classList.add('active');
+            loadUsers();
         }
     }
 }
@@ -871,7 +1218,7 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
-        if (modalId === 'custom-modal') {
+        if (modalId === 'custom-modal' || modalId === 'edit-user-modal') {
             modal.remove();
         }
     }
