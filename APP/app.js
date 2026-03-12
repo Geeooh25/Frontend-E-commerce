@@ -1,3 +1,101 @@
+// ==================== FIXED DISPLAY PRODUCTS WITH WISHLIST ====================
+async function displayProducts(productsToShow) {
+    const container = safeGetElement('products-container');
+    if (!container) {
+        console.error('Products container not found!');
+        return;
+    }
+    
+    console.log('Displaying products, currentUser:', currentUser ? 'logged in' : 'not logged in');
+    
+    container.innerHTML = '';
+    
+    // First, get all wishlist statuses at once if user is logged in
+    let wishlistStatus = {};
+    if (currentUser) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/wishlist`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                // Create a map of product IDs in wishlist
+                data.wishlist.forEach(product => {
+                    wishlistStatus[product._id] = true;
+                });
+                console.log('Wishlist loaded:', Object.keys(wishlistStatus).length, 'items');
+            }
+        } catch (error) {
+            console.error('Error loading wishlist:', error);
+        }
+    }
+    
+    // Now display products
+    productsToShow.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+        productCard.style.position = 'relative';
+        
+        const productId = product._id || product.id;
+        
+        // Check if product is in wishlist
+        const inWishlist = wishlistStatus[productId] || false;
+        const heartClass = inWishlist ? 'fas' : 'far';
+        const activeClass = inWishlist ? 'active' : '';
+        
+        // Create heart button HTML (only show if user is logged in)
+        const heartButton = currentUser ? 
+            `<button class="wishlist-btn ${activeClass}" 
+                    onclick="toggleWishlist('${productId}', this)" 
+                    style="position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;">
+                <i class="${heartClass} fa-heart" style="color: #ec4899; font-size: 18px;"></i>
+            </button>` : '';
+        
+        productCard.innerHTML = `
+            ${heartButton}
+            <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+            <div class="product-info">
+                <span class="product-category">${formatCategory(product.category)}</span>
+                <h3>${product.name}</h3>
+                <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
+                <div class="product-price">
+                    <span class="price">${CURRENCY}${product.price.toLocaleString()}</span>
+                    <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
+                </div>
+            </div>
+        `;
+        safeAppendChild(container, productCard);
+    });
+}
+
+// ==================== FIXED LOAD PRODUCTS ====================
+async function loadProducts() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/products`);
+        const data = await response.json();
+        
+        if (data.success) {
+            products = data.products;
+            console.log('Products loaded from API:', products);
+            
+            // Wait a moment for auth to be checked, then display
+            setTimeout(() => {
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+            }, 500);
+        }
+    } catch (error) {
+        console.error('Error loading products:', error);
+        products = getStaticProducts();
+        setTimeout(() => {
+            displayProducts(products.slice(0, 8));
+            displayAdvancedProducts(products);
+        }, 500);
+    }
+}
+
 // API Configuration - SINGLE DECLARATION
 const API_BASE_URL = 'https://backend-e-commerce-production-b9b1.up.railway.app/api'; 
 const CURRENCY = '₦';
@@ -100,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function checkAuthStatus() {
     const token = localStorage.getItem('token');
     if (token) {
-        // Verify token and get user profile from backend
         fetch(`${API_BASE_URL}/auth/profile`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -111,6 +208,13 @@ function checkAuthStatus() {
             if (data.success) {
                 currentUser = data.user;
                 updateAuthUI(true);
+                updateWishlistCount();
+                
+                // CRITICAL: Refresh products to show wishlist hearts
+                if (products.length > 0) {
+                    displayProducts(products.slice(0, 8));
+                    displayAdvancedProducts(products);
+                }
             } else {
                 localStorage.removeItem('token');
                 updateAuthUI(false);
@@ -202,6 +306,7 @@ async function handleGoogleSignIn() {
             localStorage.setItem('token', data.token);
             currentUser = data.user;
             updateAuthUI(true);
+            updateWishlistCount();
             
             // Close any open modals
             closeModal('login-modal');
@@ -219,6 +324,12 @@ async function handleGoogleSignIn() {
             
             // Load user's cart from server
             loadUserCart();
+            
+            // Refresh product display to update wishlist hearts
+            if (products.length > 0) {
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+            }
         } else {
             console.error('Backend login failed:', data.message);
             showNotification(data.message || 'Google sign-in failed', 'error');
@@ -426,6 +537,7 @@ async function handleLogin(event) {
             localStorage.setItem('token', data.token);
             currentUser = data.user;
             updateAuthUI(true);
+            updateWishlistCount();
             closeModal('login-modal');
             showNotification('Login successful!', 'success');
             
@@ -438,6 +550,12 @@ async function handleLogin(event) {
             
             // Load user's cart from server
             loadUserCart();
+            
+            // Refresh product display to update wishlist hearts
+            if (products.length > 0) {
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+            }
         } else {
             showNotification(data.message, 'error');
         }
@@ -512,8 +630,15 @@ async function handleRegister(event) {
             localStorage.setItem('token', data.token);
             currentUser = data.user;
             updateAuthUI(true);
+            updateWishlistCount();
             closeModal('register-modal');
             showNotification('Registration successful! Please check your email for verification.', 'success');
+            
+            // Refresh product display to show wishlist hearts
+            if (products.length > 0) {
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+            }
         } else {
             showNotification(data.message || 'Registration failed', 'error');
         }
@@ -544,6 +669,12 @@ function logout() {
     updateCartCount();
     saveCartToStorage();
     showNotification('Logged out successfully', 'info');
+    
+    // Refresh product display to remove wishlist hearts
+    if (products.length > 0) {
+        displayProducts(products.slice(0, 8));
+        displayAdvancedProducts(products);
+    }
 }
 
 // ==================== PASSWORD RESET FUNCTIONS ====================
@@ -664,24 +795,222 @@ async function handleForgotPassword(event) {
 
 // ==================== PRODUCT FUNCTIONS ====================
 
-async function loadProducts() {
+// loadProducts function is now at the top of the file
+
+// ==================== WISHLIST FUNCTIONS ====================
+
+// Check if product is in wishlist
+async function checkWishlistStatus(productId) {
+    if (!currentUser) return false;
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/products`);
+        const response = await fetch(`${API_BASE_URL}/wishlist/check/${productId}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        return data.success ? data.inWishlist : false;
+    } catch (error) {
+        console.error('Error checking wishlist:', error);
+        return false;
+    }
+}
+
+// Toggle wishlist
+async function toggleWishlist(productId, button) {
+    if (!currentUser) {
+        showNotification('Please login to save items to wishlist', 'warning');
+        openLoginModal();
+        return;
+    }
+    
+    const icon = button.querySelector('i');
+    const isAdding = icon.classList.contains('far');
+    
+    try {
+        if (isAdding) {
+            // Add to wishlist
+            const response = await fetch(`${API_BASE_URL}/wishlist/add/${productId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                button.classList.add('active');
+                showNotification('Added to wishlist! ❤️', 'success');
+                updateWishlistCount();
+            }
+        } else {
+            // Remove from wishlist
+            const response = await fetch(`${API_BASE_URL}/wishlist/remove/${productId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                button.classList.remove('active');
+                showNotification('Removed from wishlist', 'info');
+                updateWishlistCount();
+            }
+        }
+    } catch (error) {
+        console.error('Wishlist toggle error:', error);
+        showNotification('Error updating wishlist', 'error');
+    }
+}
+
+// Update wishlist count in header
+async function updateWishlistCount() {
+    const wishlistCountEl = document.getElementById('wishlist-count');
+    if (!wishlistCountEl) return;
+    
+    if (!currentUser) {
+        wishlistCountEl.textContent = '0';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/wishlist`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
         const data = await response.json();
         
         if (data.success) {
-            products = data.products;
-            console.log('Products loaded from API:', products);
-            displayProducts(products.slice(0, 8));
-            displayAdvancedProducts(products);
+            wishlistCountEl.textContent = data.wishlist.length;
         }
     } catch (error) {
-        console.error('Error loading products:', error);
-        // Fallback to static products if API fails
-        products = getStaticProducts();
-        console.log('Using static products:', products);
-        displayProducts(products.slice(0, 8));
-        displayAdvancedProducts(products);
+        console.error('Error updating wishlist count:', error);
+    }
+}
+
+// Load wishlist page
+async function loadWishlistPage() {
+    if (!currentUser) {
+        showNotification('Please login to view your wishlist', 'warning');
+        openLoginModal();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/wishlist`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayWishlistItems(data.wishlist);
+        }
+    } catch (error) {
+        console.error('Error loading wishlist:', error);
+    }
+}
+
+function displayWishlistItems(wishlist) {
+    // Create wishlist modal or page
+    const modalHtml = `
+        <div class="modal" id="wishlist-modal" style="display: block;">
+            <div class="modal-content" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-heart" style="color: #ec4899;"></i> My Wishlist</h2>
+                    <button class="close-modal" onclick="closeModal('wishlist-modal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="wishlist-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                        ${wishlist.length === 0 ? 
+                            '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>' : 
+                            wishlist.map(product => `
+                                <div class="wishlist-item" style="background: white; border-radius: 10px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    <img src="${product.image || 'https://via.placeholder.com/200'}" 
+                                         alt="${product.name}" 
+                                         style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
+                                    <h4 style="margin: 10px 0 5px;">${product.name}</h4>
+                                    <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${product.price.toLocaleString()}</p>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
+                                                onclick="addToCartFromWishlist('${product._id}')">
+                                            <i class="fas fa-cart-plus"></i>
+                                        </button>
+                                        <button class="btn btn-outline" style="padding: 8px;" 
+                                                onclick="removeFromWishlist('${product._id}', this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function addToCartFromWishlist(productId) {
+    const product = products.find(p => p._id === productId || p.id === productId);
+    if (product) {
+        currentProduct = product;
+        quantity = 1;
+        addOnsTotal = 0;
+        await addToCart();
+        closeModal('wishlist-modal');
+    }
+}
+
+async function removeFromWishlist(productId, button) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/wishlist/remove/${productId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Remove item from DOM
+            const item = button.closest('.wishlist-item');
+            item.remove();
+            showNotification('Removed from wishlist', 'info');
+            
+            // Update wishlist count
+            updateWishlistCount();
+            
+            // If wishlist is empty, show message
+            const grid = document.querySelector('.wishlist-grid');
+            if (grid.children.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>';
+            }
+            
+            // Refresh product display to update hearts
+            if (products.length > 0) {
+                displayProducts(products.slice(0, 8));
+            }
+        }
+    } catch (error) {
+        console.error('Error removing from wishlist:', error);
     }
 }
 
@@ -692,40 +1021,6 @@ function getStaticProducts() {
         { id: 2, name: "Snowcap Doughnut", category: "small-chops", price: 1500, image: "./IMAGE/snowcap doughnut new.jpg", description: "Nigerian ring dough filled with powdered sweet milk.", hasAddOns: false },
         { id: 3, name: "Puff Puff", category: "small-chops", price: 1000, image: "./IMAGE/FRESH PUFF PUFF.jpg", description: "Soft, fluffy Nigerian dough balls, lightly sweetened.", hasAddOns: false }
     ];
-}
-
-// Display products in the gallery
-function displayProducts(productsToShow) {
-    const container = safeGetElement('products-container');
-    if (!container) {
-        console.error('Products container not found!');
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    productsToShow.forEach(product => {
-        console.log('Displaying product:', product);
-        
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        
-        const productId = product._id || product.id;
-        
-        productCard.innerHTML = `
-            <img src="${product.image}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
-            <div class="product-info">
-                <span class="product-category">${formatCategory(product.category)}</span>
-                <h3>${product.name}</h3>
-                <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
-                <div class="product-price">
-                    <span class="price">${CURRENCY}${product.price.toLocaleString()}</span>
-                    <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
-                </div>
-            </div>
-        `;
-        safeAppendChild(container, productCard);
-    });
 }
 
 // Display products in advanced shopping
@@ -2491,10 +2786,15 @@ window.shareOnWhatsApp = shareOnWhatsApp;
 window.trackPageView = trackPageView;
 window.trackAddToCart = trackAddToCart;
 window.trackPurchase = trackPurchase;
-
-// Add new functions to global scope
 window.togglePasswordVisibility = togglePasswordVisibility;
 window.handleGoogleSignIn = handleGoogleSignIn;
 window.setDeliveryMethod = setDeliveryMethod;
 window.selectDeliveryMethod = selectDeliveryMethod;
 window.updateCheckoutTotal = updateCheckoutTotal;
+
+// Add wishlist functions to global scope
+window.toggleWishlist = toggleWishlist;
+window.loadWishlistPage = loadWishlistPage;
+window.addToCartFromWishlist = addToCartFromWishlist;
+window.removeFromWishlist = removeFromWishlist;
+window.updateWishlistCount = updateWishlistCount;

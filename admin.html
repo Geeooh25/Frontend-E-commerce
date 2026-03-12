@@ -323,7 +323,7 @@
             color: #c62828;
         }
 
-        /* Role Badges - New */
+        /* Role Badges */
         .role-badge {
             padding: 4px 8px;
             border-radius: 4px;
@@ -337,6 +337,30 @@
         .role-user {
             background-color: var(--neutral-medium);
             color: var(--text-medium);
+        }
+
+        /* Status Badges for Newsletter/Quick Orders */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-active {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-pending {
+            background-color: #fff3e0;
+            color: #ef6c00;
+        }
+        .status-completed {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+        }
+        .status-cancelled {
+            background-color: #ffebee;
+            color: #c62828;
         }
 
         .action-icons {
@@ -376,6 +400,14 @@
 
         .action-icon.user-shield:hover {
             color: var(--primary-dark);
+        }
+
+        .action-icon.check {
+            color: var(--success);
+        }
+
+        .action-icon.check:hover {
+            color: #2e7d32;
         }
 
         /* Category Grid */
@@ -802,6 +834,8 @@
                     <li><a href="#" onclick="switchTab('categories')">Categories</a></li>
                     <li><a href="#" onclick="switchTab('orders')">Orders</a></li>
                     <li><a href="#" onclick="switchTab('users')">Users</a></li>
+                    <li><a href="#" onclick="switchTab('newsletter')">Newsletter</a></li>
+                    <li><a href="#" onclick="switchTab('quick-orders')">Quick Orders</a></li>
                     <li><a href="index.html" target="_blank">View Store</a></li>
                 </ul>
                 
@@ -812,6 +846,8 @@
                     <a href="#" onclick="switchTab('categories'); closeMobileMenu()">Categories</a>
                     <a href="#" onclick="switchTab('orders'); closeMobileMenu()">Orders</a>
                     <a href="#" onclick="switchTab('users'); closeMobileMenu()">Users</a>
+                    <a href="#" onclick="switchTab('newsletter'); closeMobileMenu()">Newsletter</a>
+                    <a href="#" onclick="switchTab('quick-orders'); closeMobileMenu()">Quick Orders</a>
                     <a href="index.html" target="_blank">View Store</a>
                     <a href="#" onclick="logout()">Logout</a>
                 </div>
@@ -875,6 +911,20 @@
                     <div class="stat-number" id="total-users">0</div>
                 </div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-envelope"></i></div>
+                <div class="stat-info">
+                    <h3>Newsletter</h3>
+                    <div class="stat-number" id="total-newsletter">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-info">
+                    <h3>Quick Orders</h3>
+                    <div class="stat-number" id="total-quick-orders">0</div>
+                </div>
+            </div>
         </div>
 
         <!-- Tabs -->
@@ -883,6 +933,8 @@
             <div class="tab" onclick="switchTab('categories')">Categories</div>
             <div class="tab" onclick="switchTab('orders')">Orders</div>
             <div class="tab" onclick="switchTab('users')">Users</div>
+            <div class="tab" onclick="switchTab('newsletter')">Newsletter</div>
+            <div class="tab" onclick="switchTab('quick-orders')">Quick Orders</div>
         </div>
 
         <!-- Products Tab -->
@@ -945,7 +997,7 @@
             </div>
         </div>
 
-        <!-- Users Tab (New) -->
+        <!-- Users Tab -->
         <div class="tab-content" id="users-tab">
             <div class="products-table-container">
                 <table>
@@ -964,6 +1016,56 @@
                             <td colspan="6" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-users" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
                                 <p>Loading users...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Newsletter Tab -->
+        <div class="tab-content" id="newsletter-tab">
+            <div class="products-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Subscribed Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="newsletter-table-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-envelope" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                                <p>Loading subscribers...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quick Orders Tab -->
+        <div class="tab-content" id="quick-orders-tab">
+            <div class="products-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Details</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quick-orders-table-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-clock" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                                <p>Loading quick orders...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -1126,7 +1228,7 @@
         </div>
     </div>
 
-    <!-- Edit User Modal (New) -->
+    <!-- Edit User Modal -->
     <div class="modal" id="edit-user-modal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
@@ -1160,6 +1262,23 @@
                         <button type="submit" class="btn btn-primary">Update User</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Quick Order Modal -->
+    <div class="modal" id="view-quick-order-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Quick Order Details</h2>
+                <button class="close-modal" onclick="closeModal('view-quick-order-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="quick-order-details">
+                <!-- Details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" onclick="updateQuickOrderStatus('completed')">Mark Completed</button>
+                <button class="btn btn-outline" onclick="closeModal('view-quick-order-modal')">Close</button>
             </div>
         </div>
     </div>

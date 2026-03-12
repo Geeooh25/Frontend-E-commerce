@@ -7,7 +7,9 @@ let currentUser = null;
 let products = [];
 let categories = [];
 let orders = [];
-let users = []; // Added users array
+let users = [];
+let newsletter = [];
+let quickOrders = [];
 let selectedFile = null;
 
 // Initialize
@@ -18,7 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
     loadProducts();
     loadCategories();
     loadOrders();
-    loadUsers(); // Added users load
+    loadUsers();
+    loadNewsletter();
+    loadQuickOrders();
     setupEventListeners();
     
     // Ensure products tab is active
@@ -82,7 +86,7 @@ async function checkAdminAccess() {
 
 function logout() {
     localStorage.removeItem('token');
-    sessionStorage.removeItem('redirectAfterLogin'); // Clear any saved redirect
+    sessionStorage.removeItem('redirectAfterLogin');
     window.location.href = 'index.html';
 }
 
@@ -106,9 +110,314 @@ async function loadDashboardStats() {
             document.getElementById('total-categories').textContent = categories.length || 0;
             document.getElementById('total-orders').textContent = data.stats.totalOrders || 0;
             document.getElementById('total-users').textContent = data.stats.totalUsers || 0;
+            document.getElementById('total-newsletter').textContent = newsletter.length || 0;
+            document.getElementById('total-quick-orders').textContent = quickOrders.length || 0;
         }
     } catch (error) {
         console.error('Error loading stats:', error);
+    }
+}
+
+// ==================== NEWSLETTER MANAGEMENT ====================
+
+async function loadNewsletter() {
+    console.log('Loading newsletter subscribers...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/newsletter`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Newsletter data:', data);
+        
+        if (data.success) {
+            newsletter = data.subscribers || [];
+            displayNewsletter();
+            updateDashboardStats();
+        } else {
+            console.error('Failed to load newsletter:', data.message);
+            showNotification('Failed to load newsletter', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading newsletter:', error);
+        
+        const tbody = document.getElementById('newsletter-table-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 10px;"></i>
+                        <p>Error loading subscribers: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function displayNewsletter() {
+    const tbody = document.getElementById('newsletter-table-body');
+    if (!tbody) {
+        console.error('Newsletter table body not found!');
+        return;
+    }
+    
+    console.log('Displaying newsletter:', newsletter.length);
+    
+    if (!newsletter || newsletter.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-envelope" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                    <p>No subscribers yet</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    newsletter.forEach(sub => {
+        const subId = sub._id || sub.id;
+        const statusClass = sub.status === 'active' ? 'status-active' : 'status-cancelled';
+        
+        html += `
+            <tr>
+                <td>${sub.email}</td>
+                <td>${sub.subscribedAt ? new Date(sub.subscribedAt).toLocaleDateString() : 'N/A'}</td>
+                <td>
+                    <span class="status-badge ${statusClass}">${sub.status || 'active'}</span>
+                </td>
+                <td>
+                    <div class="action-icons">
+                        <i class="fas fa-envelope action-icon view" onclick="sendEmailToSubscriber('${subId}')" title="Send Email"></i>
+                        <i class="fas fa-trash action-icon delete" onclick="deleteSubscriber('${subId}')" title="Delete"></i>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    console.log('Newsletter displayed');
+}
+
+async function deleteSubscriber(subId) {
+    if (!confirm('Are you sure you want to delete this subscriber?')) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/newsletter/${subId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Subscriber deleted', 'success');
+            loadNewsletter();
+        } else {
+            showNotification(data.message || 'Failed to delete', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting subscriber:', error);
+        showNotification('Error deleting subscriber', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function sendEmailToSubscriber(subId) {
+    const sub = newsletter.find(s => s._id === subId);
+    if (!sub) return;
+    
+    // Open email client
+    window.location.href = `mailto:${sub.email}?subject=Beedaht Sweet Treats&body=Hello!`;
+}
+
+// ==================== QUICK ORDERS MANAGEMENT ====================
+
+async function loadQuickOrders() {
+    console.log('Loading quick orders...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/quick-orders`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Quick orders data:', data);
+        
+        if (data.success) {
+            quickOrders = data.orders || [];
+            displayQuickOrders();
+            updateDashboardStats();
+        } else {
+            console.error('Failed to load quick orders:', data.message);
+            showNotification('Failed to load quick orders', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading quick orders:', error);
+        
+        const tbody = document.getElementById('quick-orders-table-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 10px;"></i>
+                        <p>Error loading quick orders: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+function displayQuickOrders() {
+    const tbody = document.getElementById('quick-orders-table-body');
+    if (!tbody) {
+        console.error('Quick orders table body not found!');
+        return;
+    }
+    
+    console.log('Displaying quick orders:', quickOrders.length);
+    
+    if (!quickOrders || quickOrders.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-clock" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                    <p>No quick orders yet</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    let html = '';
+    quickOrders.forEach(order => {
+        const orderId = order._id || order.id;
+        let statusClass = 'status-pending';
+        if (order.status === 'completed') statusClass = 'status-completed';
+        if (order.status === 'cancelled') statusClass = 'status-cancelled';
+        
+        html += `
+            <tr>
+                <td>${order.name || 'N/A'}</td>
+                <td>${order.phone || 'N/A'}</td>
+                <td>${order.details ? order.details.substring(0, 30) + (order.details.length > 30 ? '...' : '') : 'No details'}</td>
+                <td>${order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}</td>
+                <td>
+                    <span class="status-badge ${statusClass}">${order.status || 'pending'}</span>
+                </td>
+                <td>
+                    <div class="action-icons">
+                        <i class="fas fa-eye action-icon view" onclick="viewQuickOrder('${orderId}')" title="View Details"></i>
+                        <i class="fas fa-check action-icon check" onclick="updateQuickOrderStatus('${orderId}', 'completed')" title="Mark Completed"></i>
+                        <i class="fas fa-times action-icon delete" onclick="updateQuickOrderStatus('${orderId}', 'cancelled')" title="Cancel"></i>
+                        <i class="fas fa-trash action-icon delete" onclick="deleteQuickOrder('${orderId}')" title="Delete"></i>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    console.log('Quick orders displayed');
+}
+
+function viewQuickOrder(orderId) {
+    const order = quickOrders.find(o => o._id === orderId);
+    if (!order) return;
+    
+    const detailsHtml = `
+        <div style="padding: 10px;">
+            <p><strong>Name:</strong> ${order.name}</p>
+            <p><strong>Phone:</strong> ${order.phone}</p>
+            <p><strong>Details:</strong> ${order.details || 'No details provided'}</p>
+            <p><strong>Date:</strong> ${order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}</p>
+            <p><strong>Status:</strong> <span class="status-badge ${order.status === 'completed' ? 'status-completed' : 'status-pending'}">${order.status || 'pending'}</span></p>
+        </div>
+    `;
+    
+    document.getElementById('quick-order-details').innerHTML = detailsHtml;
+    document.getElementById('view-quick-order-modal').style.display = 'block';
+    
+    // Store current order ID for status updates
+    window.currentQuickOrderId = orderId;
+}
+
+async function updateQuickOrderStatus(orderId, status) {
+    if (!confirm(`Mark this order as ${status}?`)) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/quick-orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ status })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Order marked as ${status}`, 'success');
+            closeModal('view-quick-order-modal');
+            loadQuickOrders();
+        } else {
+            showNotification(data.message || 'Failed to update', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating quick order:', error);
+        showNotification('Error updating order', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function deleteQuickOrder(orderId) {
+    if (!confirm('Are you sure you want to delete this quick order?')) return;
+    
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/quick-orders/${orderId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Quick order deleted', 'success');
+            loadQuickOrders();
+        } else {
+            showNotification(data.message || 'Failed to delete', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting quick order:', error);
+        showNotification('Error deleting order', 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -188,7 +497,6 @@ function displayProducts() {
         const stockQty = product.stockQuantity || 0;
         const price = product.price || 0;
         
-        // Debug log to check product data
         console.log(`Product: ${product.name}, Price: ${price}, ID: ${productId}`);
         
         let stockClass = 'stock-high';
@@ -202,7 +510,6 @@ function displayProducts() {
             stockText = 'Low Stock';
         }
         
-        // Use online placeholder instead of local file
         const imageUrl = product.image || 'https://via.placeholder.com/300?text=No+Image';
         
         html += `
@@ -236,19 +543,16 @@ function displayProducts() {
     console.log('Products displayed');
 }
 
-// ==================== FIXED CATEGORY SELECT FUNCTION ====================
+// ==================== CATEGORY SELECT FUNCTION ====================
 async function loadCategorySelect(selectedCategory = '') {
     const select = document.getElementById('product-category');
     if (!select) return;
     
-    // Clear existing options
     select.innerHTML = '<option value="">Select Category</option>';
     
-    // Set to store unique categories
     const uniqueCategories = new Set();
     
     try {
-        // FIRST: Load categories from database
         const response = await fetch(`${API_BASE_URL}/categories`);
         const data = await response.json();
         
@@ -260,7 +564,6 @@ async function loadCategorySelect(selectedCategory = '') {
             });
         }
         
-        // SECOND: Extract categories from existing products
         if (products && products.length > 0) {
             console.log('Extracting categories from products:', products.length);
             products.forEach(product => {
@@ -270,7 +573,6 @@ async function loadCategorySelect(selectedCategory = '') {
             });
         }
         
-        // THIRD: Add default categories as fallback
         const defaultCategories = [
             'small-chops', 'cakes', 'cookies', 'pastries', 'drinks', 'combos'
         ];
@@ -278,10 +580,8 @@ async function loadCategorySelect(selectedCategory = '') {
         
         console.log('All unique categories:', Array.from(uniqueCategories));
         
-        // Convert Set to array and sort
         const sortedCategories = Array.from(uniqueCategories).sort();
         
-        // Add all categories to select
         sortedCategories.forEach(category => {
             const option = document.createElement('option');
             option.value = category;
@@ -295,12 +595,10 @@ async function loadCategorySelect(selectedCategory = '') {
     } catch (error) {
         console.error('Error loading categories:', error);
         
-        // Fallback to default categories + product categories
         const allCategories = new Set([
             'small-chops', 'cakes', 'cookies', 'pastries', 'drinks', 'combos'
         ]);
         
-        // Add from products if available
         if (products && products.length > 0) {
             products.forEach(product => {
                 if (product.category) allCategories.add(product.category);
@@ -326,11 +624,9 @@ function openAddProductModal() {
     document.getElementById('image-preview').style.display = 'none';
     document.getElementById('image-preview').src = '';
     
-    // Reset file selection
     selectedFile = null;
     document.getElementById('product-image').value = '';
     
-    // Set default values
     document.getElementById('product-instock').checked = true;
     document.getElementById('product-featured').checked = false;
     document.getElementById('product-stock').value = '0';
@@ -379,7 +675,6 @@ function handleImageSelect(event) {
 
 document.getElementById('product-image')?.addEventListener('change', handleImageSelect);
 
-// ==================== FIXED SAVE PRODUCT FUNCTION ====================
 async function saveProduct(event) {
     event.preventDefault();
     showLoading(true);
@@ -387,7 +682,6 @@ async function saveProduct(event) {
     const productId = document.getElementById('product-id').value;
     const formData = new FormData();
     
-    // Get values and ensure they're properly formatted
     const name = document.getElementById('product-name').value.trim();
     const category = document.getElementById('product-category').value;
     const price = document.getElementById('product-price').value;
@@ -396,7 +690,6 @@ async function saveProduct(event) {
     const featured = document.getElementById('product-featured').checked;
     const inStock = document.getElementById('product-instock').checked;
     
-    // DEBUG: Log what we're sending
     console.log('========== SAVING PRODUCT ==========');
     console.log('Product ID:', productId || 'new');
     console.log('Name:', name);
@@ -408,7 +701,6 @@ async function saveProduct(event) {
     console.log('In Stock:', inStock);
     console.log('Image file:', selectedFile ? selectedFile.name : 'none');
     
-    // Validate required fields
     if (!name) {
         showNotification('Product name is required', 'error');
         showLoading(false);
@@ -430,14 +722,13 @@ async function saveProduct(event) {
         return;
     }
     
-    // Append ALL fields - convert numbers properly
     formData.append('name', name);
     formData.append('category', category);
-    formData.append('price', Number(price).toString()); // Ensure it's a number string
+    formData.append('price', Number(price).toString());
     formData.append('stockQuantity', stock ? Number(stock).toString() : '0');
     formData.append('description', description);
-    formData.append('featured', featured ? 'true' : 'false'); // Send as string
-    formData.append('inStock', inStock ? 'true' : 'false'); // Send as string
+    formData.append('featured', featured ? 'true' : 'false');
+    formData.append('inStock', inStock ? 'true' : 'false');
     
     if (selectedFile) {
         formData.append('image', selectedFile);
@@ -469,15 +760,12 @@ async function saveProduct(event) {
             showNotification(`Product ${productId ? 'updated' : 'created'} successfully!`, 'success');
             closeModal('product-modal');
             
-            // Reset file selection
             selectedFile = null;
             document.getElementById('product-image').value = '';
             
-            // Reload data
             loadProducts();
             loadDashboardStats();
         } else {
-            // Show detailed error
             let errorMsg = data.message || 'Failed to save product';
             if (data.errors) {
                 console.error('Validation errors:', data.errors);
@@ -864,6 +1152,7 @@ async function loadUsers() {
         if (data.success) {
             users = data.users || [];
             displayUsers();
+            loadDashboardStats();
         } else {
             console.error('Failed to load users:', data.message);
             showNotification('Failed to load users', 'error');
@@ -871,19 +1160,6 @@ async function loadUsers() {
     } catch (error) {
         console.error('Error loading users:', error);
         showNotification('Error loading users: ' + error.message, 'error');
-        
-        const tbody = document.getElementById('users-table-body');
-        if (tbody) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 40px;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 10px;"></i>
-                        <p>Error loading users: ${error.message}</p>
-                        <button class="btn btn-primary" onclick="location.reload()">Retry</button>
-                    </td>
-                </tr>
-            `;
-        }
     }
 }
 
@@ -1095,11 +1371,18 @@ async function confirmDelete() {
     showLoading(true);
     
     try {
-        const url = type === 'product' 
-            ? `${API_BASE_URL}/products/${id}`
-            : type === 'category'
-                ? `${API_BASE_URL}/categories/${id}`
-                : `${API_BASE_URL}/admin/users/${id}`;
+        let url;
+        if (type === 'product') {
+            url = `${API_BASE_URL}/products/${id}`;
+        } else if (type === 'category') {
+            url = `${API_BASE_URL}/categories/${id}`;
+        } else if (type === 'newsletter') {
+            url = `${API_BASE_URL}/newsletter/${id}`;
+        } else if (type === 'quick-order') {
+            url = `${API_BASE_URL}/quick-orders/${id}`;
+        } else {
+            url = `${API_BASE_URL}/admin/users/${id}`;
+        }
         
         const response = await fetch(url, {
             method: 'DELETE',
@@ -1118,6 +1401,10 @@ async function confirmDelete() {
                 loadProducts();
             } else if (type === 'category') {
                 loadCategories();
+            } else if (type === 'newsletter') {
+                loadNewsletter();
+            } else if (type === 'quick-order') {
+                loadQuickOrders();
             }
             loadDashboardStats();
         } else {
@@ -1169,6 +1456,20 @@ function switchTab(tab) {
             usersTab.classList.add('active');
             loadUsers();
         }
+    } else if (tab === 'newsletter') {
+        if (tabs[4]) tabs[4].classList.add('active');
+        const newsletterTab = document.getElementById('newsletter-tab');
+        if (newsletterTab) {
+            newsletterTab.classList.add('active');
+            loadNewsletter();
+        }
+    } else if (tab === 'quick-orders') {
+        if (tabs[5]) tabs[5].classList.add('active');
+        const quickOrdersTab = document.getElementById('quick-orders-tab');
+        if (quickOrdersTab) {
+            quickOrdersTab.classList.add('active');
+            loadQuickOrders();
+        }
     }
 }
 
@@ -1218,7 +1519,7 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
-        if (modalId === 'custom-modal' || modalId === 'edit-user-modal') {
+        if (modalId === 'custom-modal' || modalId === 'edit-user-modal' || modalId === 'view-quick-order-modal') {
             modal.remove();
         }
     }
@@ -1255,3 +1556,31 @@ function setupEventListeners() {
         }
     };
 }
+
+// Make functions globally available
+window.switchTab = switchTab;
+window.logout = logout;
+window.openAddProductModal = openAddProductModal;
+window.openAddCategoryModal = openAddCategoryModal;
+window.saveProduct = saveProduct;
+window.saveCategory = saveCategory;
+window.updateStock = updateStock;
+window.openDeleteModal = openDeleteModal;
+window.confirmDelete = confirmDelete;
+window.viewProduct = viewProduct;
+window.openEditProductModal = openEditProductModal;
+window.openStockModal = openStockModal;
+window.openEditCategoryModal = openEditCategoryModal;
+window.updateOrderStatus = updateOrderStatus;
+window.viewOrderDetails = viewOrderDetails;
+window.editUser = editUser;
+window.updateUser = updateUser;
+window.deleteUser = deleteUser;
+window.makeAdmin = makeAdmin;
+window.removeAdmin = removeAdmin;
+window.viewQuickOrder = viewQuickOrder;
+window.updateQuickOrderStatus = updateQuickOrderStatus;
+window.deleteQuickOrder = deleteQuickOrder;
+window.sendEmailToSubscriber = sendEmailToSubscriber;
+window.deleteSubscriber = deleteSubscriber;
+window.closeModal = closeModal;
