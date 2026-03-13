@@ -1,3 +1,68 @@
+// ==================== UNIFIED WISHLIST FUNCTIONS ====================
+
+// Unified function to get wishlist status
+async function getWishlistStatus() {
+    if (!currentUser) return {};
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/wishlist`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            const status = {};
+            data.wishlist.forEach(item => {
+                // Handle both object IDs and string combo IDs
+                const id = typeof item === 'object' ? item._id : item;
+                status[id] = true;
+            });
+            return status;
+        }
+    } catch (error) {
+        console.error('Error loading wishlist:', error);
+    }
+    return {};
+}
+
+// Single function to create product cards
+function createProductCard(product, wishlistStatus) {
+    const productCard = document.createElement('div');
+    productCard.className = 'product-card';
+    productCard.style.position = 'relative';
+    
+    const productId = product._id || product.id;
+    const inWishlist = wishlistStatus[productId] || false;
+    
+    let heartButton = '';
+    if (currentUser) {
+        heartButton = `
+            <button class="wishlist-btn ${inWishlist ? 'active' : ''}" 
+                    onclick="toggleWishlist('${productId}', this)" 
+                    style="position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;">
+                <i class="${inWishlist ? 'fas' : 'far'} fa-heart" style="color: #ec4899; font-size: 18px;"></i>
+            </button>
+        `;
+    }
+    
+    productCard.innerHTML = `
+        ${heartButton}
+        <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+        <div class="product-info">
+            <span class="product-category">${formatCategory(product.category)}</span>
+            <h3>${product.name}</h3>
+            <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
+            <div class="product-price">
+                <span class="price">${CURRENCY}${product.price?.toLocaleString() || 0}</span>
+                <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
+            </div>
+        </div>
+    `;
+    
+    return productCard;
+}
+
 // ==================== FIXED DISPLAY PRODUCTS WITH WISHLIST ====================
 async function displayProducts(productsToShow) {
     const container = safeGetElement('products-container');
@@ -10,62 +75,12 @@ async function displayProducts(productsToShow) {
     
     container.innerHTML = '';
     
-    // First, get all wishlist statuses at once if user is logged in
-    let wishlistStatus = {};
-    if (currentUser) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/wishlist`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            const data = await response.json();
-            if (data.success) {
-                // Create a map of product IDs in wishlist
-                data.wishlist.forEach(product => {
-                    wishlistStatus[product._id] = true;
-                });
-                console.log('Wishlist loaded:', Object.keys(wishlistStatus).length, 'items');
-            }
-        } catch (error) {
-            console.error('Error loading wishlist:', error);
-        }
-    }
+    // Get wishlist status using unified function
+    const wishlistStatus = await getWishlistStatus();
     
-    // Now display products
+    // Now display products using createProductCard
     productsToShow.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.style.position = 'relative';
-        
-        const productId = product._id || product.id;
-        
-        // Check if product is in wishlist
-        const inWishlist = wishlistStatus[productId] || false;
-        const heartClass = inWishlist ? 'fas' : 'far';
-        const activeClass = inWishlist ? 'active' : '';
-        
-        // Create heart button HTML (only show if user is logged in)
-        const heartButton = currentUser ? 
-            `<button class="wishlist-btn ${activeClass}" 
-                    onclick="toggleWishlist('${productId}', this)" 
-                    style="position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;">
-                <i class="${heartClass} fa-heart" style="color: #ec4899; font-size: 18px;"></i>
-            </button>` : '';
-        
-        productCard.innerHTML = `
-            ${heartButton}
-            <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
-            <div class="product-info">
-                <span class="product-category">${formatCategory(product.category)}</span>
-                <h3>${product.name}</h3>
-                <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
-                <div class="product-price">
-                    <span class="price">${CURRENCY}${product.price.toLocaleString()}</span>
-                    <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
-                </div>
-            </div>
-        `;
+        const productCard = createProductCard(product, wishlistStatus);
         safeAppendChild(container, productCard);
     });
     
@@ -216,7 +231,7 @@ function checkAuthStatus() {
                 // CRITICAL: Refresh products to show wishlist hearts
                 if (products.length > 0) {
                     const container = safeGetElement('products-container');
-                    if (container && container.children.length > 0) {
+                    if (container) {
                         displayProducts(products.slice(0, 8));
                         displayAdvancedProducts(products);
                         displayCombosWithWishlist();
@@ -334,12 +349,9 @@ async function handleGoogleSignIn() {
             
             // Refresh product display to update wishlist hearts
             if (products.length > 0) {
-                const container = safeGetElement('products-container');
-                if (container && container.children.length > 0) {
-                    displayProducts(products.slice(0, 8));
-                    displayAdvancedProducts(products);
-                    displayCombosWithWishlist();
-                }
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+                displayCombosWithWishlist();
             }
         } else {
             console.error('Backend login failed:', data.message);
@@ -564,12 +576,9 @@ async function handleLogin(event) {
             
             // Refresh product display to update wishlist hearts
             if (products.length > 0) {
-                const container = safeGetElement('products-container');
-                if (container && container.children.length > 0) {
-                    displayProducts(products.slice(0, 8));
-                    displayAdvancedProducts(products);
-                    displayCombosWithWishlist();
-                }
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+                displayCombosWithWishlist();
             }
         } else {
             showNotification(data.message, 'error');
@@ -651,12 +660,9 @@ async function handleRegister(event) {
             
             // Refresh product display to show wishlist hearts
             if (products.length > 0) {
-                const container = safeGetElement('products-container');
-                if (container && container.children.length > 0) {
-                    displayProducts(products.slice(0, 8));
-                    displayAdvancedProducts(products);
-                    displayCombosWithWishlist();
-                }
+                displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+                displayCombosWithWishlist();
             }
         } else {
             showNotification(data.message || 'Registration failed', 'error');
@@ -691,13 +697,10 @@ function logout() {
     
     // Refresh product display to remove wishlist hearts
     if (products.length > 0) {
-        const container = safeGetElement('products-container');
-        if (container) {
-            displayProducts(products.slice(0, 8));
-            displayAdvancedProducts(products);
-            // Also refresh combos to remove hearts
-            displayCombosWithWishlist();
-        }
+        displayProducts(products.slice(0, 8));
+        displayAdvancedProducts(products);
+        // Also refresh combos to remove hearts
+        displayCombosWithWishlist();
     }
 }
 
@@ -829,62 +832,12 @@ async function displayAdvancedProducts(productsToShow) {
     
     container.innerHTML = '';
     
-    // Get wishlist status if user is logged in
-    let wishlistStatus = {};
-    if (currentUser) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/wishlist`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            const data = await response.json();
-            if (data.success) {
-                data.wishlist.forEach(product => {
-                    wishlistStatus[product._id] = true;
-                });
-            }
-        } catch (error) {
-            console.error('Error loading wishlist for advanced products:', error);
-        }
-    }
+    // Get wishlist status using unified function
+    const wishlistStatus = await getWishlistStatus();
     
+    // Now display products using createProductCard
     productsToShow.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.style.position = 'relative';
-        
-        const productId = product._id || product.id;
-        
-        // Show heart button ONLY if logged in
-        let heartButton = '';
-        if (currentUser) {
-            const inWishlist = wishlistStatus[productId] || false;
-            const heartClass = inWishlist ? 'fas' : 'far';
-            const activeClass = inWishlist ? 'active' : '';
-            
-            heartButton = `
-                <button class="wishlist-btn ${activeClass}" 
-                        onclick="toggleWishlist('${productId}', event, this)" 
-                        style="position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;">
-                    <i class="${heartClass} fa-heart" style="color: #ec4899; font-size: 18px;"></i>
-                </button>
-            `;
-        }
-        
-        productCard.innerHTML = `
-            ${heartButton}
-            <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
-            <div class="product-info">
-                <span class="product-category">${formatCategory(product.category)}</span>
-                <h3>${product.name}</h3>
-                <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
-                <div class="product-price">
-                    <span class="price">${CURRENCY}${product.price.toLocaleString()}</span>
-                    <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
-                </div>
-            </div>
-        `;
+        const productCard = createProductCard(product, wishlistStatus);
         safeAppendChild(container, productCard);
     });
 }
@@ -923,7 +876,7 @@ function displayCombosWithWishlist() {
                         const comboId = `combo-${comboName.replace(/\s+/g, '-').toLowerCase()}`;
                         
                         // Check if this combo is in wishlist
-                        const inWishlist = wishlistIds.some(id => id === comboId);
+                        const inWishlist = wishlistIds.includes(comboId);
                         
                         // Add heart button to combo card
                         const heartButton = document.createElement('button');
@@ -1134,10 +1087,10 @@ async function updateWishlistCount() {
     }
 }
 
-// Load wishlist page
-async function loadWishlistPage() {
+// ==================== UNIFIED WISHLIST DISPLAY ====================
+async function displayWishlistItems() {
     if (!currentUser) {
-        showNotification('Please login to view your wishlist', 'warning');
+        showNotification('Please login to view wishlist', 'warning');
         openLoginModal();
         return;
     }
@@ -1152,53 +1105,101 @@ async function loadWishlistPage() {
         const data = await response.json();
         
         if (data.success) {
-            displayWishlistItems(data.wishlist);
+            const wishlistItems = data.wishlist;
+            
+            // Create wishlist modal
+            const modalHtml = `
+                <div class="modal" id="wishlist-modal" style="display: block;">
+                    <div class="modal-content" style="max-width: 800px;">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-heart" style="color: #ec4899;"></i> My Wishlist</h2>
+                            <button class="close-modal" onclick="closeModal('wishlist-modal')">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="wishlist-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                                ${wishlistItems.length === 0 ? 
+                                    '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>' : 
+                                    wishlistItems.map(item => {
+                                        // Check if it's a combo (string that starts with 'combo-')
+                                        if (typeof item === 'string' && item.startsWith('combo-')) {
+                                            return getComboWishlistItem(item);
+                                        } else {
+                                            return getProductWishlistItem(item);
+                                        }
+                                    }).join('')
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
     } catch (error) {
         console.error('Error loading wishlist:', error);
     }
 }
 
-function displayWishlistItems(wishlist) {
-    // Create wishlist modal or page
-    const modalHtml = `
-        <div class="modal" id="wishlist-modal" style="display: block;">
-            <div class="modal-content" style="max-width: 800px;">
-                <div class="modal-header">
-                    <h2><i class="fas fa-heart" style="color: #ec4899;"></i> My Wishlist</h2>
-                    <button class="close-modal" onclick="closeModal('wishlist-modal')">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="wishlist-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
-                        ${wishlist.length === 0 ? 
-                            '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>' : 
-                            wishlist.map(product => `
-                                <div class="wishlist-item" style="background: white; border-radius: 10px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                                    <img src="${product.image || 'https://via.placeholder.com/200'}" 
-                                         alt="${product.name}" 
-                                         style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
-                                    <h4 style="margin: 10px 0 5px;">${product.name}</h4>
-                                    <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${product.price.toLocaleString()}</p>
-                                    <div style="display: flex; gap: 10px;">
-                                        <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
-                                                onclick="addToCartFromWishlist('${product._id}')">
-                                            <i class="fas fa-cart-plus"></i>
-                                        </button>
-                                        <button class="btn btn-outline" style="padding: 8px;" 
-                                                onclick="removeFromWishlist('${product._id}', this)">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')
-                        }
-                    </div>
-                </div>
+// Helper for product wishlist items
+function getProductWishlistItem(product) {
+    return `
+        <div class="wishlist-item" data-id="${product._id}" data-type="product">
+            <img src="${product.image || 'https://via.placeholder.com/200'}" 
+                 alt="${product.name}" 
+                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
+            <h4 style="margin: 10px 0 5px;">${product.name}</h4>
+            <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${product.price?.toLocaleString() || 0}</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
+                        onclick="addToCartFromWishlist('${product._id}')">
+                    <i class="fas fa-cart-plus"></i>
+                </button>
+                <button class="btn btn-outline" style="padding: 8px;" 
+                        onclick="removeFromWishlist('${product._id}', this)">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         </div>
     `;
+}
+
+// Helper for combo wishlist items
+function getComboWishlistItem(comboId) {
+    const comboName = comboId.replace('combo-', '').replace(/-/g, ' ');
+    const comboPrices = {
+        'jollof combo': 5000,
+        'fried rice combo': 6000,
+        'small chops combo': 5000,
+        'doughnut combo': 3500
+    };
+    const price = comboPrices[comboName.toLowerCase()] || 5000;
     
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    return `
+        <div class="wishlist-item" data-id="${comboId}" data-type="combo">
+            <img src="./IMAGE/${comboName.toUpperCase().replace(/ /g, '_')}.jpg" 
+                 alt="${comboName}" 
+                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;"
+                 onerror="this.src='https://via.placeholder.com/200?text=Combo'">
+            <h4 style="margin: 10px 0 5px; text-transform: capitalize;">${comboName}</h4>
+            <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${price.toLocaleString()}</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
+                        onclick="openComboModal('${comboName}', ${price}, './IMAGE/${comboName.toUpperCase().replace(/ /g, '_')}.jpg')">
+                    <i class="fas fa-eye"></i> View
+                </button>
+                <button class="btn btn-outline" style="padding: 8px;" 
+                        onclick="removeFromWishlist('${comboId}', this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Load wishlist page (alias for displayWishlistItems for backward compatibility)
+async function loadWishlistPage() {
+    await displayWishlistItems();
 }
 
 async function addToCartFromWishlist(productId) {
@@ -1234,7 +1235,7 @@ async function removeFromWishlist(productId, button) {
             
             // If wishlist is empty, show message
             const grid = document.querySelector('.wishlist-grid');
-            if (grid.children.length === 0) {
+            if (grid && grid.children.length === 0) {
                 grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>';
             }
             
@@ -2922,7 +2923,12 @@ window.updateCheckoutTotal = updateCheckoutTotal;
 // Add wishlist functions to global scope
 window.toggleWishlist = toggleWishlist;
 window.loadWishlistPage = loadWishlistPage;
+window.displayWishlistItems = displayWishlistItems;
 window.addToCartFromWishlist = addToCartFromWishlist;
 window.removeFromWishlist = removeFromWishlist;
 window.updateWishlistCount = updateWishlistCount;
 window.displayCombosWithWishlist = displayCombosWithWishlist;
+window.getWishlistStatus = getWishlistStatus;
+window.createProductCard = createProductCard;
+window.getProductWishlistItem = getProductWishlistItem;
+window.getComboWishlistItem = getComboWishlistItem;
