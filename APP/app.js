@@ -117,7 +117,20 @@ async function loadProducts() {
 // API Configuration - SINGLE DECLARATION
 const API_BASE_URL = 'https://backend-e-commerce-production-b9b1.up.railway.app/api'; 
 const CURRENCY = '₦';
-const DELIVERY_FEE = 1500; // Changed from 0 to actual delivery fee
+const DELIVERY_FEE = 1500;
+
+// Combo prices constant for wishlist display
+const COMBO_PRICES = {
+    'jollof combo': 5000,
+    'fried rice combo': 6000,
+    'small chops combo': 5000,
+    'doughnut combo': 3500,
+    'milky doughnuts combo': 8500,
+    'food tray combo': 100000,
+    'ponmo garnished vegetable': 2000,
+    'spaghetti': 4000,
+    'ewa agoyin': 1500
+};
 
 // Firebase Configuration - Using the modular SDK (v9+)
 const firebaseConfig = {
@@ -153,27 +166,23 @@ let quantity = 1;
 let comboQuantity = 1;
 let currentUser = null;
 let token = localStorage.getItem('token');
-let selectedDeliveryMethod = 'delivery'; // Default to delivery
+let selectedDeliveryMethod = 'delivery';
 
 // Product data (will be fetched from API)
 let products = [];
 
 // ==================== SAFE DOM MANIPULATION HELPER ====================
 function safeInsertBefore(parent, newNode, referenceNode) {
-    // Check if parent exists and is in DOM
     if (!parent || !document.body.contains(parent)) {
         console.warn('Parent element not found or not in DOM');
         return false;
     }
     
-    // Check if reference node is valid and is a child of parent
     if (!referenceNode || !parent.contains(referenceNode)) {
-        // If reference node is invalid, just append
         parent.appendChild(newNode);
         return true;
     }
     
-    // Safe to insert before
     parent.insertBefore(newNode, referenceNode);
     return true;
 }
@@ -230,12 +239,9 @@ function checkAuthStatus() {
                 
                 // CRITICAL: Refresh products to show wishlist hearts
                 if (products.length > 0) {
-                    const container = safeGetElement('products-container');
-                    if (container) {
-                        displayProducts(products.slice(0, 8));
-                        displayAdvancedProducts(products);
-                        displayCombosWithWishlist();
-                    }
+                    displayProducts(products.slice(0, 8));
+                    displayAdvancedProducts(products);
+                    displayCombosWithWishlist();
                 }
             } else {
                 localStorage.removeItem('token');
@@ -270,47 +276,29 @@ function togglePasswordVisibility(inputId, icon) {
 // ==================== GOOGLE SIGN-IN FUNCTION ====================
 async function handleGoogleSignIn() {
     try {
-        // Check if Firebase Auth is available
         if (!firebaseAuth) {
             console.error('Firebase Auth not available');
             showNotification('Authentication service unavailable', 'error');
             return;
         }
 
-        // Create Google provider
         const provider = new firebase.auth.GoogleAuthProvider();
         
-        // Add scopes if needed
         provider.addScope('profile');
         provider.addScope('email');
         
-        // Set custom parameters
         provider.setCustomParameters({
             prompt: 'select_account'
         });
         
-        console.log('Opening Google sign-in popup...');
-        
-        // Show loading notification
         showNotification('Opening Google sign-in...', 'info');
         
-        // Sign in with popup
         const result = await firebaseAuth.signInWithPopup(provider);
         
-        // Get user info
         const user = result.user;
-        console.log('Google sign-in successful:', user.email);
-        console.log('User details:', {
-            name: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL
-        });
         
-        // Get token for backend
         const idToken = await user.getIdToken();
-        console.log('Got Firebase ID token');
         
-        // Send token to your backend
         showNotification('Completing sign-in...', 'info');
         
         const response = await fetch(`${API_BASE_URL}/auth/firebase/login`, {
@@ -322,7 +310,6 @@ async function handleGoogleSignIn() {
         });
         
         const data = await response.json();
-        console.log('Backend response:', data);
         
         if (data.success) {
             localStorage.setItem('token', data.token);
@@ -330,45 +317,31 @@ async function handleGoogleSignIn() {
             updateAuthUI(true);
             updateWishlistCount();
             
-            // Close any open modals
             closeModal('login-modal');
             closeModal('register-modal');
             
             showNotification(`Welcome, ${user.displayName || 'User'}!`, 'success');
             
-            // Check for redirect after login (for admin access)
             const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
             if (redirectUrl) {
                 sessionStorage.removeItem('redirectAfterLogin');
-                console.log('Redirecting to:', redirectUrl);
                 window.location.href = redirectUrl;
             }
             
-            // Load user's cart from server
             loadUserCart();
             
-            // Refresh product display to update wishlist hearts
             if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
                 displayAdvancedProducts(products);
                 displayCombosWithWishlist();
             }
         } else {
-            console.error('Backend login failed:', data.message);
             showNotification(data.message || 'Google sign-in failed', 'error');
         }
         
     } catch (error) {
-        console.error('Google sign-in error details:', {
-            code: error.code,
-            message: error.message,
-            email: error.email,
-            credential: error.credential
-        });
-        
         let errorMessage = 'Google sign-in failed. ';
         
-        // Handle specific Firebase errors
         if (error.code === 'auth/popup-closed-by-user') {
             errorMessage = 'Sign-in cancelled. Please try again.';
         } else if (error.code === 'auth/popup-blocked') {
@@ -398,25 +371,21 @@ function updateAuthUI(isLoggedIn) {
     const userNameEl = safeGetElement('user-name');
     
     if (isLoggedIn && currentUser) {
-        // Desktop
         if (authButtons) authButtons.style.display = 'none';
         if (userProfile) {
             userProfile.style.display = 'flex';
             if (userNameEl) userNameEl.textContent = currentUser.name.split(' ')[0];
         }
         
-        // Mobile
         if (mobileAuthButtons) mobileAuthButtons.style.display = 'none';
         if (mobileUserMenu) {
             mobileUserMenu.style.display = 'block';
             if (mobileUserName) mobileUserName.textContent = currentUser.name;
         }
     } else {
-        // Desktop
         if (authButtons) authButtons.style.display = 'flex';
         if (userProfile) userProfile.style.display = 'none';
         
-        // Mobile
         if (mobileAuthButtons) mobileAuthButtons.style.display = 'block';
         if (mobileUserMenu) mobileUserMenu.style.display = 'none';
     }
@@ -426,7 +395,6 @@ function openLoginModal() {
     const existingModal = safeGetElement('login-modal');
     if (existingModal) safeRemoveElement(existingModal);
     
-    // Create login modal dynamically with Google button
     const modalHtml = `
         <div class="modal" id="login-modal" style="display: block;">
             <div class="modal-content" style="max-width: 400px;">
@@ -453,7 +421,6 @@ function openLoginModal() {
                         <button type="submit" class="btn btn-full-width">Login</button>
                     </form>
                     
-                    <!-- Google Sign-In Button -->
                     <div class="divider" style="text-align: center; margin: 20px 0; position: relative;">
                         <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 0;">
                         <span style="position: relative; top: -12px; background: white; padding: 0 10px; color: #999; font-size: 14px;">OR</span>
@@ -508,7 +475,6 @@ function openRegisterModal() {
                         <button type="submit" class="btn btn-full-width">Register</button>
                     </form>
                     
-                    <!-- Google Sign-In Button -->
                     <div class="divider" style="text-align: center; margin: 20px 0; position: relative;">
                         <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 0;">
                         <span style="position: relative; top: -12px; background: white; padding: 0 10px; color: #999; font-size: 14px;">OR</span>
@@ -535,17 +501,14 @@ async function handleLogin(event) {
     const password = document.getElementById('login-password').value;
     
     try {
-        // Show loading state
         const submitBtn = event.target.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
         submitBtn.disabled = true;
         
-        // Sign in with Firebase
         const userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
         const idToken = await userCredential.user.getIdToken();
         
-        // Send token to your backend
         const response = await fetch(`${API_BASE_URL}/auth/firebase/login`, {
             method: 'POST',
             headers: {
@@ -564,17 +527,14 @@ async function handleLogin(event) {
             closeModal('login-modal');
             showNotification('Login successful!', 'success');
             
-            // Check for redirect after login (for admin access)
             const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
             if (redirectUrl) {
                 sessionStorage.removeItem('redirectAfterLogin');
                 window.location.href = redirectUrl;
             }
             
-            // Load user's cart from server
             loadUserCart();
             
-            // Refresh product display to update wishlist hearts
             if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
                 displayAdvancedProducts(products);
@@ -584,10 +544,8 @@ async function handleLogin(event) {
             showNotification(data.message, 'error');
         }
     } catch (error) {
-        console.error('Login error:', error);
         let errorMessage = 'Login failed. Please try again.';
         
-        // Handle Firebase specific errors
         if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
             errorMessage = 'Invalid email or password';
         } else if (error.code === 'auth/too-many-requests') {
@@ -600,7 +558,6 @@ async function handleLogin(event) {
         
         showNotification(errorMessage, 'error');
     } finally {
-        // Reset button state
         const submitBtn = event.target.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.innerHTML = 'Login';
@@ -617,28 +574,23 @@ async function handleRegister(event) {
     const phone = document.getElementById('register-phone').value.trim();
     const password = document.getElementById('register-password').value;
     
-    // Validate inputs
     if (!name || !email || !phone || !password) {
         showNotification('Please fill in all fields', 'error');
         return;
     }
     
-    // Basic phone validation
     const phoneDigits = phone.replace(/\D/g, '');
     if (phoneDigits.length < 10) {
         showNotification('Please enter a valid phone number', 'error');
         return;
     }
     
-    // Show loading state
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
     submitBtn.disabled = true;
     
     try {
-        console.log('Sending registration data:', { name, email, phone });
-        
         const response = await fetch(`${API_BASE_URL}/auth/firebase/register`, {
             method: 'POST',
             headers: {
@@ -648,7 +600,6 @@ async function handleRegister(event) {
         });
         
         const data = await response.json();
-        console.log('Registration response:', data);
         
         if (data.success) {
             localStorage.setItem('token', data.token);
@@ -658,7 +609,6 @@ async function handleRegister(event) {
             closeModal('register-modal');
             showNotification('Registration successful! Please check your email for verification.', 'success');
             
-            // Refresh product display to show wishlist hearts
             if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
                 displayAdvancedProducts(products);
@@ -677,7 +627,6 @@ async function handleRegister(event) {
 }
 
 function logout() {
-    // Sign out from Firebase if available
     if (firebaseAuth) {
         firebaseAuth.signOut().then(() => {
             console.log('Signed out from Firebase');
@@ -686,7 +635,6 @@ function logout() {
         });
     }
     
-    // Clear local storage and state
     localStorage.removeItem('token');
     currentUser = null;
     updateAuthUI(false);
@@ -695,11 +643,9 @@ function logout() {
     saveCartToStorage();
     showNotification('Logged out successfully', 'info');
     
-    // Refresh product display to remove wishlist hearts
     if (products.length > 0) {
         displayProducts(products.slice(0, 8));
         displayAdvancedProducts(products);
-        // Also refresh combos to remove hearts
         displayCombosWithWishlist();
     }
 }
@@ -707,22 +653,17 @@ function logout() {
 // ==================== PASSWORD RESET FUNCTIONS ====================
 
 function openForgotPasswordModal() {
-    console.log('Opening forgot password modal');
-    
-    // Close login modal if open
     const loginModal = safeGetElement('login-modal');
     if (loginModal) {
         loginModal.style.display = 'none';
         safeRemoveElement(loginModal);
     }
     
-    // Remove any existing forgot password modal
     const existingModal = safeGetElement('forgot-password-modal');
     if (existingModal) {
         safeRemoveElement(existingModal);
     }
     
-    // Create the forgot password modal HTML
     const modalHtml = `
         <div class="modal" id="forgot-password-modal" style="display: block;">
             <div class="modal-content" style="max-width: 400px;">
@@ -747,12 +688,10 @@ function openForgotPasswordModal() {
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log('Forgot password modal created');
 }
 
 async function handleForgotPassword(event) {
     event.preventDefault();
-    console.log('Processing forgot password request');
     
     const emailInput = document.getElementById('forgot-email');
     if (!emailInput) {
@@ -767,26 +706,22 @@ async function handleForgotPassword(event) {
         return;
     }
     
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         showNotification('Please enter a valid email address', 'error');
         return;
     }
     
-    // Show loading state
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     submitBtn.disabled = true;
     
     try {
-        // Firebase will handle the password reset email
         if (firebaseAuth) {
             await firebaseAuth.sendPasswordResetEmail(email);
             showNotification('Password reset email sent! Please check your inbox.', 'success');
         } else {
-            // Fallback to backend if Firebase not available
             const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -800,21 +735,18 @@ async function handleForgotPassword(event) {
             }
         }
         
-        // Close modal after 2 seconds
         setTimeout(() => {
             closeModal('forgot-password-modal');
             openLoginModal();
         }, 2000);
         
     } catch (error) {
-        console.error('Forgot password error:', error);
         showNotification('If this email is registered, a reset link will be sent.', 'info');
         setTimeout(() => {
             closeModal('forgot-password-modal');
             openLoginModal();
         }, 2000);
     } finally {
-        // Reset button state
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     }
@@ -832,23 +764,21 @@ async function displayAdvancedProducts(productsToShow) {
     
     container.innerHTML = '';
     
-    // Get wishlist status using unified function
     const wishlistStatus = await getWishlistStatus();
     
-    // Now display products using createProductCard
     productsToShow.forEach(product => {
         const productCard = createProductCard(product, wishlistStatus);
         safeAppendChild(container, productCard);
     });
 }
 
-// ==================== ADD WISHLIST TO COMBOS ====================
+// ==================== FIXED COMBO WISHLIST ====================
 function displayCombosWithWishlist() {
+    if (!currentUser) return;
+    
     const comboContainers = document.querySelectorAll('.combo-card');
+    if (!comboContainers.length) return;
     
-    if (!currentUser) return; // Don't add hearts if not logged in
-    
-    // Get wishlist status first
     fetch(`${API_BASE_URL}/wishlist`, {
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -857,47 +787,102 @@ function displayCombosWithWishlist() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            const wishlistIds = data.wishlist.map(p => p._id);
+            const wishlistIds = new Set();
+            data.wishlist.forEach(item => {
+                const id = typeof item === 'object' ? item._id : item;
+                wishlistIds.add(id);
+            });
             
             comboContainers.forEach(comboCard => {
-                // Remove any existing wishlist buttons first
-                const existingBtn = comboCard.querySelector('.wishlist-btn');
-                if (existingBtn) {
-                    existingBtn.remove();
-                }
-                
-                // Get the combo ID from the button's onclick
                 const viewButton = comboCard.querySelector('button[onclick^="openComboModal"]');
-                if (viewButton) {
-                    const onclickAttr = viewButton.getAttribute('onclick');
-                    const match = onclickAttr.match(/'([^']+)'/g);
-                    if (match && match[0]) {
-                        const comboName = match[0].replace(/'/g, '');
-                        const comboId = `combo-${comboName.replace(/\s+/g, '-').toLowerCase()}`;
-                        
-                        // Check if this combo is in wishlist
-                        const inWishlist = wishlistIds.includes(comboId);
-                        
-                        // Add heart button to combo card
-                        const heartButton = document.createElement('button');
-                        heartButton.className = `wishlist-btn ${inWishlist ? 'active' : ''}`;
-                        heartButton.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;';
-                        heartButton.innerHTML = `<i class="${inWishlist ? 'fas' : 'far'} fa-heart" style="color: #ec4899; font-size: 18px;"></i>`;
-                        heartButton.onclick = (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toggleWishlist(comboId, heartButton);
-                        };
-                        
-                        // Make combo card position relative if not already
-                        comboCard.style.position = 'relative';
-                        comboCard.appendChild(heartButton);
-                    }
-                }
+                if (!viewButton) return;
+                
+                const onclickAttr = viewButton.getAttribute('onclick');
+                const matches = onclickAttr.match(/'([^']+)'/g);
+                if (!matches || matches.length < 2) return;
+                
+                const comboName = matches[0].replace(/'/g, '');
+                const comboPrice = matches[1] ? parseInt(matches[1].replace(/'/g, '')) : 0;
+                
+                const comboId = `combo-${comboName.toLowerCase().replace(/\s+/g, '-')}`;
+                
+                const inWishlist = wishlistIds.has(comboId);
+                
+                const existingHeart = comboCard.querySelector('.wishlist-btn');
+                if (existingHeart) existingHeart.remove();
+                
+                const heartButton = document.createElement('button');
+                heartButton.className = `wishlist-btn ${inWishlist ? 'active' : ''}`;
+                heartButton.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;';
+                heartButton.innerHTML = `<i class="${inWishlist ? 'fas' : 'far'} fa-heart" style="color: #ec4899; font-size: 18px;"></i>`;
+                
+                heartButton.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleComboWishlist(comboId, comboName, comboPrice, heartButton);
+                };
+                
+                comboCard.style.position = 'relative';
+                comboCard.appendChild(heartButton);
             });
         }
     })
     .catch(error => console.error('Error loading wishlist for combos:', error));
+}
+
+// ==================== TOGGLE COMBO WISHLIST ====================
+async function toggleComboWishlist(comboId, comboName, comboPrice, button) {
+    if (!currentUser) {
+        showNotification('Please login to save items to wishlist', 'warning');
+        openLoginModal();
+        return;
+    }
+    
+    const icon = button.querySelector('i');
+    const isAdding = icon.classList.contains('far');
+    
+    try {
+        if (isAdding) {
+            const response = await fetch(`${API_BASE_URL}/wishlist/add/${comboId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                button.classList.add('active');
+                showNotification(`"${comboName}" added to wishlist! ❤️`, 'success');
+                updateWishlistCount();
+            } else {
+                showNotification(data.message || 'Failed to add to wishlist', 'error');
+            }
+        } else {
+            const response = await fetch(`${API_BASE_URL}/wishlist/remove/${comboId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                button.classList.remove('active');
+                showNotification(`"${comboName}" removed from wishlist`, 'info');
+                updateWishlistCount();
+            }
+        }
+    } catch (error) {
+        console.error('Combo wishlist error:', error);
+        showNotification('Error updating wishlist', 'error');
+    }
 }
 
 function formatCategory(category) {
@@ -912,7 +897,6 @@ function formatCategory(category) {
     return categories[category] || category;
 }
 
-// Filter products by category
 function filterProducts(category) {
     document.querySelectorAll('.filter-option').forEach(btn => {
         btn.classList.remove('active');
@@ -933,13 +917,11 @@ function filterProducts(category) {
     }
 }
 
-// Filter category from footer links
 function filterCategory(category) {
     event.preventDefault();
     filterProducts(category);
 }
 
-// Filter products by price
 function filterByPrice(priceRange) {
     let filteredProducts = [];
     
@@ -958,7 +940,6 @@ function filterByPrice(priceRange) {
     displayAdvancedProducts(filteredProducts);
 }
 
-// Sort products
 function sortProducts() {
     const sortValue = document.getElementById('sort-products').value;
     let sortedProducts = [...products];
@@ -980,7 +961,6 @@ function sortProducts() {
 
 // ==================== WISHLIST FUNCTIONS ====================
 
-// Check if product is in wishlist
 async function checkWishlistStatus(productId) {
     if (!currentUser) return false;
     
@@ -999,7 +979,6 @@ async function checkWishlistStatus(productId) {
     }
 }
 
-// Toggle wishlist - updated to handle both event and direct calls
 async function toggleWishlist(productId, button) {
     if (!currentUser) {
         showNotification('Please login to save items to wishlist', 'warning');
@@ -1012,7 +991,6 @@ async function toggleWishlist(productId, button) {
     
     try {
         if (isAdding) {
-            // Add to wishlist
             const response = await fetch(`${API_BASE_URL}/wishlist/add/${productId}`, {
                 method: 'POST',
                 headers: {
@@ -1029,11 +1007,9 @@ async function toggleWishlist(productId, button) {
                 showNotification('Added to wishlist! ❤️', 'success');
                 updateWishlistCount();
                 
-                // Refresh combos if needed
                 displayCombosWithWishlist();
             }
         } else {
-            // Remove from wishlist
             const response = await fetch(`${API_BASE_URL}/wishlist/remove/${productId}`, {
                 method: 'DELETE',
                 headers: {
@@ -1050,7 +1026,6 @@ async function toggleWishlist(productId, button) {
                 showNotification('Removed from wishlist', 'info');
                 updateWishlistCount();
                 
-                // Refresh combos if needed
                 displayCombosWithWishlist();
             }
         }
@@ -1060,7 +1035,6 @@ async function toggleWishlist(productId, button) {
     }
 }
 
-// Update wishlist count in header
 async function updateWishlistCount() {
     const wishlistCountEl = document.getElementById('wishlist-count');
     if (!wishlistCountEl) return;
@@ -1087,7 +1061,7 @@ async function updateWishlistCount() {
     }
 }
 
-// ==================== UNIFIED WISHLIST DISPLAY ====================
+// ==================== UPDATED WISHLIST DISPLAY ====================
 async function displayWishlistItems() {
     if (!currentUser) {
         showNotification('Please login to view wishlist', 'warning');
@@ -1105,9 +1079,8 @@ async function displayWishlistItems() {
         const data = await response.json();
         
         if (data.success) {
-            const wishlistItems = data.wishlist;
+            const wishlist = data.wishlist;
             
-            // Create wishlist modal
             const modalHtml = `
                 <div class="modal" id="wishlist-modal" style="display: block;">
                     <div class="modal-content" style="max-width: 800px;">
@@ -1117,14 +1090,13 @@ async function displayWishlistItems() {
                         </div>
                         <div class="modal-body">
                             <div class="wishlist-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
-                                ${wishlistItems.length === 0 ? 
+                                ${wishlist.length === 0 ? 
                                     '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>' : 
-                                    wishlistItems.map(item => {
-                                        // Check if it's a combo (string that starts with 'combo-')
+                                    wishlist.map(item => {
                                         if (typeof item === 'string' && item.startsWith('combo-')) {
-                                            return getComboWishlistItem(item);
+                                            return displayComboInWishlist(item);
                                         } else {
-                                            return getProductWishlistItem(item);
+                                            return displayProductInWishlist(item);
                                         }
                                     }).join('')
                                 }
@@ -1141,42 +1113,16 @@ async function displayWishlistItems() {
     }
 }
 
-// Helper for product wishlist items
-function getProductWishlistItem(product) {
-    return `
-        <div class="wishlist-item" data-id="${product._id}" data-type="product">
-            <img src="${product.image || 'https://via.placeholder.com/200'}" 
-                 alt="${product.name}" 
-                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
-            <h4 style="margin: 10px 0 5px;">${product.name}</h4>
-            <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${product.price?.toLocaleString() || 0}</p>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
-                        onclick="addToCartFromWishlist('${product._id}')">
-                    <i class="fas fa-cart-plus"></i>
-                </button>
-                <button class="btn btn-outline" style="padding: 8px;" 
-                        onclick="removeFromWishlist('${product._id}', this)">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-// Helper for combo wishlist items
-function getComboWishlistItem(comboId) {
+// Helper for displaying combos in wishlist
+function displayComboInWishlist(comboId) {
     const comboName = comboId.replace('combo-', '').replace(/-/g, ' ');
-    const comboPrices = {
-        'jollof combo': 5000,
-        'fried rice combo': 6000,
-        'small chops combo': 5000,
-        'doughnut combo': 3500
-    };
-    const price = comboPrices[comboName.toLowerCase()] || 5000;
+    
+    const price = Object.entries(COMBO_PRICES).find(([key]) => 
+        comboName.toLowerCase().includes(key)
+    )?.[1] || 5000;
     
     return `
-        <div class="wishlist-item" data-id="${comboId}" data-type="combo">
+        <div class="wishlist-item" data-id="${comboId}">
             <img src="./IMAGE/${comboName.toUpperCase().replace(/ /g, '_')}.jpg" 
                  alt="${comboName}" 
                  style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;"
@@ -1190,6 +1136,29 @@ function getComboWishlistItem(comboId) {
                 </button>
                 <button class="btn btn-outline" style="padding: 8px;" 
                         onclick="removeFromWishlist('${comboId}', this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Helper for displaying products in wishlist
+function displayProductInWishlist(product) {
+    return `
+        <div class="wishlist-item" data-id="${product._id}">
+            <img src="${product.image || 'https://via.placeholder.com/200'}" 
+                 alt="${product.name}" 
+                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
+            <h4 style="margin: 10px 0 5px;">${product.name}</h4>
+            <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${product.price?.toLocaleString() || 0}</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
+                        onclick="addToCartFromWishlist('${product._id}')">
+                    <i class="fas fa-cart-plus"></i>
+                </button>
+                <button class="btn btn-outline" style="padding: 8px;" 
+                        onclick="removeFromWishlist('${product._id}', this)">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -1225,21 +1194,17 @@ async function removeFromWishlist(productId, button) {
         const data = await response.json();
         
         if (data.success) {
-            // Remove item from DOM
             const item = button.closest('.wishlist-item');
             item.remove();
             showNotification('Removed from wishlist', 'info');
             
-            // Update wishlist count
             updateWishlistCount();
             
-            // If wishlist is empty, show message
             const grid = document.querySelector('.wishlist-grid');
             if (grid && grid.children.length === 0) {
                 grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>';
             }
             
-            // Refresh product display to update hearts
             if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
                 displayAdvancedProducts(products);
@@ -1300,14 +1265,11 @@ function loadCartFromStorage() {
     updateCartCount();
 }
 
-// Add item to cart
 async function addToCart() {
     if (!currentProduct) {
         showNotification('Please select a product first!', 'error');
         return;
     }
-    
-    console.log('Adding to cart:', currentProduct);
     
     let unitPrice = currentProduct.price + addOnsTotal;
     
@@ -1363,7 +1325,6 @@ async function addToCart() {
     closeModal('product-modal');
 }
 
-// Add combo to cart
 function addComboToCart() {
     if (!currentCombo) {
         showNotification('Please select a combo first!', 'error');
@@ -1410,7 +1371,6 @@ function addComboToCart() {
     closeModal('combo-modal');
 }
 
-// Update cart count in header
 function updateCartCount() {
     const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
     const cartCountElements = document.querySelectorAll('.cart-count');
@@ -1419,7 +1379,6 @@ function updateCartCount() {
     });
 }
 
-// Update cart display in modal
 function updateCartDisplay() {
     const cartItemsContainer = safeGetElement('cart-items');
     const cartTotalElement = safeGetElement('cart-total');
@@ -1456,10 +1415,8 @@ function updateCartDisplay() {
         safeAppendChild(cartItemsContainer, cartItemElement);
     });
     
-    // Calculate delivery fee based on selected method
     let delivery = { fee: 0, message: 'Delivery: ₦0' };
     
-    // Check if delivery method is set in session or default to delivery
     const savedMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
     selectedDeliveryMethod = savedMethod;
     
@@ -1494,7 +1451,6 @@ function updateCartDisplay() {
             bannerHtml = deliveryService.getDeliveryBannerHTML(subtotal);
         }
         
-        // Add delivery method selector
         const deliverySelector = `
             <div class="delivery-method-selector" style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">Delivery Method:</label>
@@ -1528,12 +1484,10 @@ function updateCartDisplay() {
     cartTotalElement.textContent = total.toLocaleString();
 }
 
-// Set delivery method
 function setDeliveryMethod(method) {
     selectedDeliveryMethod = method;
     sessionStorage.setItem('deliveryMethod', method);
     updateCartDisplay();
-    console.log('Delivery method set to:', method);
 }
 
 function updateQuantity(itemId, change) {
@@ -1586,7 +1540,6 @@ function toggleCart() {
 
 // ==================== ORDER FUNCTIONS ====================
 
-// ========== FIXED PROCEED TO CHECKOUT FUNCTION ==========
 async function proceedToCheckout() {
     if (cart.length === 0) {
         showNotification('Your cart is empty!', 'error');
@@ -1599,7 +1552,6 @@ async function proceedToCheckout() {
         return;
     }
     
-    // Update checkout summary
     const checkoutSummary = safeGetElement('checkout-summary');
     const checkoutTotal = safeGetElement('checkout-total');
     
@@ -1632,27 +1584,22 @@ async function proceedToCheckout() {
         safeAppendChild(checkoutSummary, itemElement);
     });
     
-    // ========== FIXED DELIVERY SECTION INSERTION WITH PICKUP OPTION ==========
     if (typeof deliveryService !== 'undefined') {
         const checkoutModal = safeGetElement('checkout-modal');
         if (checkoutModal) {
             const checkoutBody = checkoutModal.querySelector('.modal-body');
             
             if (checkoutBody && document.body.contains(checkoutBody)) {
-                // Remove existing delivery section if any
                 const existingSection = safeGetElement('delivery-section');
                 if (existingSection && existingSection.parentNode) {
                     safeRemoveElement(existingSection);
                 }
                 
-                // Get selected delivery method
                 const savedMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
                 
-                // Create new delivery section with pickup option
                 const deliverySection = document.createElement('div');
                 deliverySection.id = 'delivery-section';
                 
-                // Custom delivery options HTML that includes pickup
                 const deliveryHtml = `
                     <div class="form-group form-row">
                         <h3>Delivery Method</h3>
@@ -1684,30 +1631,21 @@ async function proceedToCheckout() {
                 
                 deliverySection.innerHTML = deliveryHtml;
                 
-                // Find payment section
                 const paymentSection = checkoutBody.querySelector('.payment-options')?.closest('.form-group');
                 
-                // SAFE INSERTION - Check if parent contains reference node
                 if (paymentSection && checkoutBody.contains(paymentSection)) {
-                    // Check if paymentSection has a parent and is in the DOM
                     if (paymentSection.parentNode === checkoutBody) {
-                        // Safe to insert before
                         checkoutBody.insertBefore(deliverySection, paymentSection);
                     } else {
-                        // If paymentSection is not a direct child, append to checkout body
                         safeAppendChild(checkoutBody, deliverySection);
                     }
                 } else {
-                    // If payment section not found, append to checkout body
                     safeAppendChild(checkoutBody, deliverySection);
                 }
-            } else {
-                console.warn('Checkout body not found or not in DOM');
             }
         }
     }
     
-    // Calculate total with delivery based on selected method
     const savedMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
     let deliveryFee = 0;
     
@@ -1726,7 +1664,6 @@ async function proceedToCheckout() {
     
     checkoutTotal.textContent = total.toLocaleString();
     
-    // Pre-fill user data
     const nameField = safeGetElement('checkout-name');
     const emailField = safeGetElement('checkout-email');
     const phoneField = safeGetElement('checkout-phone');
@@ -1736,7 +1673,6 @@ async function proceedToCheckout() {
     if (emailField) emailField.value = currentUser.email || '';
     if (phoneField) phoneField.value = currentUser.phone || '';
     
-    // If pickup is selected, address might be optional
     if (addressField) {
         if (savedMethod === 'pickup') {
             addressField.placeholder = 'Address not required for pickup';
@@ -1751,7 +1687,6 @@ async function proceedToCheckout() {
         }
     }
     
-    // Show checkout modal
     const cartModal = safeGetElement('cart-modal');
     const checkoutModal = safeGetElement('checkout-modal');
     
@@ -1759,12 +1694,10 @@ async function proceedToCheckout() {
     if (checkoutModal) checkoutModal.style.display = 'block';
 }
 
-// Select delivery method in checkout
 function selectDeliveryMethod(method) {
     selectedDeliveryMethod = method;
     sessionStorage.setItem('deliveryMethod', method);
     
-    // Update radio buttons
     const radios = document.querySelectorAll('input[name="checkoutDeliveryMethod"]');
     radios.forEach(radio => {
         if (radio.value === method) {
@@ -1772,7 +1705,6 @@ function selectDeliveryMethod(method) {
         }
     });
     
-    // Update delivery option styling
     const options = document.querySelectorAll('.delivery-option');
     options.forEach(option => {
         const radio = option.querySelector('input');
@@ -1785,7 +1717,6 @@ function selectDeliveryMethod(method) {
         }
     });
     
-    // Update address field requirement
     const addressField = safeGetElement('checkout-address');
     if (addressField) {
         if (method === 'pickup') {
@@ -1797,7 +1728,6 @@ function selectDeliveryMethod(method) {
         }
     }
     
-    // Recalculate total
     const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     const checkoutTotal = safeGetElement('checkout-total');
     
@@ -1813,11 +1743,8 @@ function selectDeliveryMethod(method) {
         }
         checkoutTotal.textContent = (subtotal + deliveryFee).toLocaleString();
     }
-    
-    console.log('Checkout delivery method set to:', method);
 }
 
-// Update checkout total when delivery method changes
 function updateCheckoutTotal() {
     const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
@@ -1893,29 +1820,23 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
     
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    // Get delivery method
     const deliveryMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
     let deliveryFee = 0;
     
     if (deliveryMethod === 'pickup') {
         deliveryFee = 0;
-        console.log('✅ Pickup selected - no delivery fee');
     } else {
         if (typeof deliveryService !== 'undefined') {
             const delivery = deliveryService.calculateFee(itemsPrice);
             deliveryFee = delivery.fee;
-            console.log(`✅ Delivery fee calculated: ₦${deliveryFee} - ${delivery.message}`);
         } else {
             deliveryFee = DELIVERY_FEE;
-            console.log(`✅ Standard delivery fee: ₦${DELIVERY_FEE}`);
         }
     }
     
     const totalPrice = itemsPrice + deliveryFee;
     
     try {
-        console.log('Creating regular order...');
-        
         const response = await fetch(`${API_BASE_URL}/orders`, {
             method: 'POST',
             headers: {
@@ -1929,7 +1850,7 @@ async function processRegularOrder(name, email, phone, addressText, paymentMetho
                 itemsPrice,
                 deliveryPrice: deliveryFee,
                 totalPrice,
-                deliveryMethod: deliveryMethod // Add delivery method to order
+                deliveryMethod: deliveryMethod
             })
         });
         
@@ -1976,13 +1897,11 @@ async function processPaystackPayment(name, email, phone, addressText) {
 
     const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     
-    // Get delivery method
     const deliveryMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
     let deliveryFee = 0;
     
     if (deliveryMethod === 'pickup') {
         deliveryFee = 0;
-        console.log('✅ Pickup selected - no delivery fee for Paystack');
     } else {
         if (typeof deliveryService !== 'undefined') {
             const delivery = deliveryService.calculateFee(itemsPrice);
@@ -2019,12 +1938,11 @@ async function processPaystackPayment(name, email, phone, addressText) {
                 itemsPrice,
                 deliveryPrice: deliveryFee,
                 totalPrice,
-                deliveryMethod: deliveryMethod // Add delivery method to order
+                deliveryMethod: deliveryMethod
             })
         });
 
         const orderData = await orderResponse.json();
-        console.log('Order created:', orderData);
 
         if (orderData.success) {
             await initializePaystackPayment(
@@ -2053,7 +1971,6 @@ async function initializePaystackPayment(amount, email, orderId) {
         });
 
         const data = await response.json();
-        console.log('Payment initialization:', data);
 
         if (data.success) {
             window.location.href = data.authorization_url;
@@ -2080,10 +1997,6 @@ function selectPayment(method) {
     }
     const radio = document.getElementById(method);
     if (radio) radio.checked = true;
-    
-    if (method === 'paystack') {
-        console.log('Paystack selected');
-    }
 }
 
 async function viewMyOrders() {
@@ -2131,17 +2044,13 @@ async function viewMyOrders() {
 // ==================== MODAL FUNCTIONS ====================
 
 function openProductModal(productId) {
-    console.log('Looking for product with ID:', productId);
-    
     const product = products.find(p => p._id == productId || p.id == productId);
     
     if (!product) {
-        console.error('Product not found with ID:', productId);
         showNotification('Product not found!', 'error');
         return;
     }
     
-    console.log('Found product:', product);
     currentProduct = product;
     addOnsTotal = 0;
     quantity = 1;
@@ -2277,7 +2186,6 @@ function showModal(title, content) {
 }
 
 function closeModal(modalId) {
-    console.log('Closing modal:', modalId);
     const modal = safeGetElement(modalId);
     if (modal) {
         modal.style.display = 'none';
@@ -2478,8 +2386,6 @@ function viewProfile() {
         return;
     }
     
-    console.log('Opening profile modal for user:', currentUser.name);
-    
     const existingModal = safeGetElement('profile-modal');
     if (existingModal) {
         safeRemoveElement(existingModal);
@@ -2574,8 +2480,6 @@ function viewProfile() {
 }
 
 function openEditProfileModal() {
-    console.log('Opening edit profile modal');
-    
     if (!currentUser) {
         showNotification('Please login first', 'warning');
         return;
@@ -2655,7 +2559,6 @@ function openEditProfileModal() {
 
 async function updateProfile(event) {
     event.preventDefault();
-    console.log('Updating profile...');
     
     const submitBtn = event.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
@@ -2682,8 +2585,6 @@ async function updateProfile(event) {
     };
     
     try {
-        console.log('Sending update request with data:', { name, email, phone, address });
-        
         const response = await fetch(`${API_BASE_URL}/auth/profile`, {
             method: 'PUT',
             headers: {
@@ -2694,7 +2595,6 @@ async function updateProfile(event) {
         });
         
         const data = await response.json();
-        console.log('Update response:', data);
         
         if (data.success) {
             currentUser = data.user;
@@ -2922,6 +2822,7 @@ window.updateCheckoutTotal = updateCheckoutTotal;
 
 // Add wishlist functions to global scope
 window.toggleWishlist = toggleWishlist;
+window.toggleComboWishlist = toggleComboWishlist;
 window.loadWishlistPage = loadWishlistPage;
 window.displayWishlistItems = displayWishlistItems;
 window.addToCartFromWishlist = addToCartFromWishlist;
@@ -2930,5 +2831,5 @@ window.updateWishlistCount = updateWishlistCount;
 window.displayCombosWithWishlist = displayCombosWithWishlist;
 window.getWishlistStatus = getWishlistStatus;
 window.createProductCard = createProductCard;
-window.getProductWishlistItem = getProductWishlistItem;
-window.getComboWishlistItem = getComboWishlistItem;
+window.displayComboInWishlist = displayComboInWishlist;
+window.displayProductInWishlist = displayProductInWishlist;
