@@ -68,6 +68,9 @@ async function displayProducts(productsToShow) {
         `;
         safeAppendChild(container, productCard);
     });
+    
+    // After displaying products, also update combos with wishlist
+    displayCombosWithWishlist();
 }
 
 // ==================== FIXED LOAD PRODUCTS ====================
@@ -212,8 +215,12 @@ function checkAuthStatus() {
                 
                 // CRITICAL: Refresh products to show wishlist hearts
                 if (products.length > 0) {
-                    displayProducts(products.slice(0, 8));
-                    displayAdvancedProducts(products);
+                    const container = safeGetElement('products-container');
+                    if (container && container.children.length > 0) {
+                        displayProducts(products.slice(0, 8));
+                        displayAdvancedProducts(products);
+                        displayCombosWithWishlist();
+                    }
                 }
             } else {
                 localStorage.removeItem('token');
@@ -327,8 +334,12 @@ async function handleGoogleSignIn() {
             
             // Refresh product display to update wishlist hearts
             if (products.length > 0) {
-                displayProducts(products.slice(0, 8));
-                displayAdvancedProducts(products);
+                const container = safeGetElement('products-container');
+                if (container && container.children.length > 0) {
+                    displayProducts(products.slice(0, 8));
+                    displayAdvancedProducts(products);
+                    displayCombosWithWishlist();
+                }
             }
         } else {
             console.error('Backend login failed:', data.message);
@@ -553,8 +564,12 @@ async function handleLogin(event) {
             
             // Refresh product display to update wishlist hearts
             if (products.length > 0) {
-                displayProducts(products.slice(0, 8));
-                displayAdvancedProducts(products);
+                const container = safeGetElement('products-container');
+                if (container && container.children.length > 0) {
+                    displayProducts(products.slice(0, 8));
+                    displayAdvancedProducts(products);
+                    displayCombosWithWishlist();
+                }
             }
         } else {
             showNotification(data.message, 'error');
@@ -636,8 +651,12 @@ async function handleRegister(event) {
             
             // Refresh product display to show wishlist hearts
             if (products.length > 0) {
-                displayProducts(products.slice(0, 8));
-                displayAdvancedProducts(products);
+                const container = safeGetElement('products-container');
+                if (container && container.children.length > 0) {
+                    displayProducts(products.slice(0, 8));
+                    displayAdvancedProducts(products);
+                    displayCombosWithWishlist();
+                }
             }
         } else {
             showNotification(data.message || 'Registration failed', 'error');
@@ -672,8 +691,13 @@ function logout() {
     
     // Refresh product display to remove wishlist hearts
     if (products.length > 0) {
-        displayProducts(products.slice(0, 8));
-        displayAdvancedProducts(products);
+        const container = safeGetElement('products-container');
+        if (container) {
+            displayProducts(products.slice(0, 8));
+            displayAdvancedProducts(products);
+            // Also refresh combos to remove hearts
+            displayCombosWithWishlist();
+        }
     }
 }
 
@@ -795,7 +819,211 @@ async function handleForgotPassword(event) {
 
 // ==================== PRODUCT FUNCTIONS ====================
 
-// loadProducts function is now at the top of the file
+// ==================== FIXED ADVANCED PRODUCTS WITH WISHLIST ====================
+async function displayAdvancedProducts(productsToShow) {
+    const container = safeGetElement('advanced-products-container');
+    if (!container) {
+        console.error('Advanced products container not found!');
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    // Get wishlist status if user is logged in
+    let wishlistStatus = {};
+    if (currentUser) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/wishlist`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            const data = await response.json();
+            if (data.success) {
+                data.wishlist.forEach(product => {
+                    wishlistStatus[product._id] = true;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading wishlist for advanced products:', error);
+        }
+    }
+    
+    productsToShow.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+        productCard.style.position = 'relative';
+        
+        const productId = product._id || product.id;
+        
+        // Show heart button ONLY if logged in
+        let heartButton = '';
+        if (currentUser) {
+            const inWishlist = wishlistStatus[productId] || false;
+            const heartClass = inWishlist ? 'fas' : 'far';
+            const activeClass = inWishlist ? 'active' : '';
+            
+            heartButton = `
+                <button class="wishlist-btn ${activeClass}" 
+                        onclick="toggleWishlist('${productId}', event, this)" 
+                        style="position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;">
+                    <i class="${heartClass} fa-heart" style="color: #ec4899; font-size: 18px;"></i>
+                </button>
+            `;
+        }
+        
+        productCard.innerHTML = `
+            ${heartButton}
+            <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+            <div class="product-info">
+                <span class="product-category">${formatCategory(product.category)}</span>
+                <h3>${product.name}</h3>
+                <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
+                <div class="product-price">
+                    <span class="price">${CURRENCY}${product.price.toLocaleString()}</span>
+                    <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
+                </div>
+            </div>
+        `;
+        safeAppendChild(container, productCard);
+    });
+}
+
+// ==================== ADD WISHLIST TO COMBOS ====================
+function displayCombosWithWishlist() {
+    const comboContainers = document.querySelectorAll('.combo-card');
+    
+    if (!currentUser) return; // Don't add hearts if not logged in
+    
+    // Get wishlist status first
+    fetch(`${API_BASE_URL}/wishlist`, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const wishlistIds = data.wishlist.map(p => p._id);
+            
+            comboContainers.forEach(comboCard => {
+                // Remove any existing wishlist buttons first
+                const existingBtn = comboCard.querySelector('.wishlist-btn');
+                if (existingBtn) {
+                    existingBtn.remove();
+                }
+                
+                // Get the combo ID from the button's onclick
+                const viewButton = comboCard.querySelector('button[onclick^="openComboModal"]');
+                if (viewButton) {
+                    const onclickAttr = viewButton.getAttribute('onclick');
+                    const match = onclickAttr.match(/'([^']+)'/g);
+                    if (match && match[0]) {
+                        const comboName = match[0].replace(/'/g, '');
+                        const comboId = `combo-${comboName.replace(/\s+/g, '-').toLowerCase()}`;
+                        
+                        // Check if this combo is in wishlist
+                        const inWishlist = wishlistIds.some(id => id === comboId);
+                        
+                        // Add heart button to combo card
+                        const heartButton = document.createElement('button');
+                        heartButton.className = `wishlist-btn ${inWishlist ? 'active' : ''}`;
+                        heartButton.style.cssText = 'position: absolute; top: 10px; right: 10px; z-index: 10; background: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;';
+                        heartButton.innerHTML = `<i class="${inWishlist ? 'fas' : 'far'} fa-heart" style="color: #ec4899; font-size: 18px;"></i>`;
+                        heartButton.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleWishlist(comboId, heartButton);
+                        };
+                        
+                        // Make combo card position relative if not already
+                        comboCard.style.position = 'relative';
+                        comboCard.appendChild(heartButton);
+                    }
+                }
+            });
+        }
+    })
+    .catch(error => console.error('Error loading wishlist for combos:', error));
+}
+
+function formatCategory(category) {
+    const categories = {
+        'small-chops': 'Small Chops',
+        'cakes': 'Cakes',
+        'cookies': 'Cookies',
+        'pastries': 'Pastries',
+        'drinks': 'Drinks',
+        'combos': 'Combos'
+    };
+    return categories[category] || category;
+}
+
+// Filter products by category
+function filterProducts(category) {
+    document.querySelectorAll('.filter-option').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    let filteredProducts;
+    if (category === 'all') {
+        filteredProducts = products;
+    } else {
+        filteredProducts = products.filter(product => product.category === category);
+    }
+    
+    displayAdvancedProducts(filteredProducts);
+    const advancedShop = safeGetElement('advanced-shop');
+    if (advancedShop) {
+        advancedShop.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Filter category from footer links
+function filterCategory(category) {
+    event.preventDefault();
+    filterProducts(category);
+}
+
+// Filter products by price
+function filterByPrice(priceRange) {
+    let filteredProducts = [];
+    
+    switch(priceRange) {
+        case 'under-2000':
+            filteredProducts = products.filter(product => product.price < 2000);
+            break;
+        case '2000-5000':
+            filteredProducts = products.filter(product => product.price >= 2000 && product.price <= 5000);
+            break;
+        case 'over-5000':
+            filteredProducts = products.filter(product => product.price > 5000);
+            break;
+    }
+    
+    displayAdvancedProducts(filteredProducts);
+}
+
+// Sort products
+function sortProducts() {
+    const sortValue = document.getElementById('sort-products').value;
+    let sortedProducts = [...products];
+    
+    switch(sortValue) {
+        case 'price-low':
+            sortedProducts.sort((a, b) => a.price - b.price);
+            break;
+        case 'price-high':
+            sortedProducts.sort((a, b) => b.price - a.price);
+            break;
+        case 'name':
+            sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+    }
+    
+    displayAdvancedProducts(sortedProducts);
+}
 
 // ==================== WISHLIST FUNCTIONS ====================
 
@@ -818,7 +1046,7 @@ async function checkWishlistStatus(productId) {
     }
 }
 
-// Toggle wishlist
+// Toggle wishlist - updated to handle both event and direct calls
 async function toggleWishlist(productId, button) {
     if (!currentUser) {
         showNotification('Please login to save items to wishlist', 'warning');
@@ -847,6 +1075,9 @@ async function toggleWishlist(productId, button) {
                 button.classList.add('active');
                 showNotification('Added to wishlist! ❤️', 'success');
                 updateWishlistCount();
+                
+                // Refresh combos if needed
+                displayCombosWithWishlist();
             }
         } else {
             // Remove from wishlist
@@ -865,6 +1096,9 @@ async function toggleWishlist(productId, button) {
                 button.classList.remove('active');
                 showNotification('Removed from wishlist', 'info');
                 updateWishlistCount();
+                
+                // Refresh combos if needed
+                displayCombosWithWishlist();
             }
         }
     } catch (error) {
@@ -1007,6 +1241,8 @@ async function removeFromWishlist(productId, button) {
             // Refresh product display to update hearts
             if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
+                displayAdvancedProducts(products);
+                displayCombosWithWishlist();
             }
         }
     } catch (error) {
@@ -1021,115 +1257,6 @@ function getStaticProducts() {
         { id: 2, name: "Snowcap Doughnut", category: "small-chops", price: 1500, image: "./IMAGE/snowcap doughnut new.jpg", description: "Nigerian ring dough filled with powdered sweet milk.", hasAddOns: false },
         { id: 3, name: "Puff Puff", category: "small-chops", price: 1000, image: "./IMAGE/FRESH PUFF PUFF.jpg", description: "Soft, fluffy Nigerian dough balls, lightly sweetened.", hasAddOns: false }
     ];
-}
-
-// Display products in advanced shopping
-function displayAdvancedProducts(productsToShow) {
-    const container = safeGetElement('advanced-products-container');
-    if (!container) {
-        console.error('Advanced products container not found!');
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    productsToShow.forEach(product => {
-        const productId = product._id || product.id;
-        
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.innerHTML = `
-            <img src="${product.image}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
-            <div class="product-info">
-                <span class="product-category">${formatCategory(product.category)}</span>
-                <h3>${product.name}</h3>
-                <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
-                <div class="product-price">
-                    <span class="price">${CURRENCY}${product.price.toLocaleString()}</span>
-                    <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
-                </div>
-            </div>
-        `;
-        safeAppendChild(container, productCard);
-    });
-}
-
-function formatCategory(category) {
-    const categories = {
-        'small-chops': 'Small Chops',
-        'cakes': 'Cakes',
-        'cookies': 'Cookies',
-        'pastries': 'Pastries',
-        'drinks': 'Drinks',
-        'combos': 'Combos'
-    };
-    return categories[category] || category;
-}
-
-// Filter products by category
-function filterProducts(category) {
-    document.querySelectorAll('.filter-option').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    let filteredProducts;
-    if (category === 'all') {
-        filteredProducts = products;
-    } else {
-        filteredProducts = products.filter(product => product.category === category);
-    }
-    
-    displayAdvancedProducts(filteredProducts);
-    const advancedShop = safeGetElement('advanced-shop');
-    if (advancedShop) {
-        advancedShop.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-// Filter category from footer links
-function filterCategory(category) {
-    event.preventDefault();
-    filterProducts(category);
-}
-
-// Filter products by price
-function filterByPrice(priceRange) {
-    let filteredProducts = [];
-    
-    switch(priceRange) {
-        case 'under-2000':
-            filteredProducts = products.filter(product => product.price < 2000);
-            break;
-        case '2000-5000':
-            filteredProducts = products.filter(product => product.price >= 2000 && product.price <= 5000);
-            break;
-        case 'over-5000':
-            filteredProducts = products.filter(product => product.price > 5000);
-            break;
-    }
-    
-    displayAdvancedProducts(filteredProducts);
-}
-
-// Sort products
-function sortProducts() {
-    const sortValue = document.getElementById('sort-products').value;
-    let sortedProducts = [...products];
-    
-    switch(sortValue) {
-        case 'price-low':
-            sortedProducts.sort((a, b) => a.price - b.price);
-            break;
-        case 'price-high':
-            sortedProducts.sort((a, b) => b.price - a.price);
-            break;
-        case 'name':
-            sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
-            break;
-    }
-    
-    displayAdvancedProducts(sortedProducts);
 }
 
 // ==================== CART FUNCTIONS ====================
@@ -2798,3 +2925,4 @@ window.loadWishlistPage = loadWishlistPage;
 window.addToCartFromWishlist = addToCartFromWishlist;
 window.removeFromWishlist = removeFromWishlist;
 window.updateWishlistCount = updateWishlistCount;
+window.displayCombosWithWishlist = displayCombosWithWishlist;
