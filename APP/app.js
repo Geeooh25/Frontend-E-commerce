@@ -2323,358 +2323,82 @@ function closeQuickOrder() {
     if (modal) modal.style.display = 'none';
 }
 
-function submitQuickOrder() {
-    const name = safeGetElement('quick-order-name')?.value;
-    const phone = safeGetElement('quick-order-phone')?.value;
-    const details = safeGetElement('quick-order-details')?.value;
+// ==================== ENHANCED QUICK ORDER SUBMISSION ====================
+async function submitQuickOrder() {
+    const name = document.getElementById('quick-order-name')?.value;
+    const phone = document.getElementById('quick-order-phone')?.value;
+    const details = document.getElementById('quick-order-details')?.value;
     
     if (!name || !phone) {
         showNotification('Please fill in your name and phone number!', 'error');
         return;
     }
     
-    showNotification('Order request submitted! We will contact you shortly.', 'success');
-    
-    const nameField = safeGetElement('quick-order-name');
-    const phoneField = safeGetElement('quick-order-phone');
-    const detailsField = safeGetElement('quick-order-details');
-    
-    if (nameField) nameField.value = '';
-    if (phoneField) phoneField.value = '';
-    if (detailsField) detailsField.value = '';
-    
-    closeQuickOrder();
-}
-
-// ==================== NOTIFICATION FUNCTIONS ====================
-
-function showNotification(message, type = 'success') {
-    document.querySelectorAll('.notification').forEach(el => safeRemoveElement(el));
-    
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    
-    let icon = '✓';
-    if (type === 'error') icon = '✗';
-    if (type === 'warning') icon = '⚠';
-    if (type === 'info') icon = 'ℹ';
-    
-    notification.innerHTML = `
-        <span style="font-size: 1.2em;">${icon}</span>
-        <span>${message}</span>
-    `;
-    
-    safeAppendChild(document.body, notification);
-    
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 10);
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            safeRemoveElement(notification);
-        }, 300);
-    }, 3000);
-}
-
-// ==================== PROFILE FUNCTIONS ====================
-
-function viewProfile() {
-    if (!currentUser) {
-        showNotification('Please login first', 'warning');
-        return;
-    }
-    
-    const existingModal = safeGetElement('profile-modal');
-    if (existingModal) {
-        safeRemoveElement(existingModal);
-    }
-    
-    let addressDisplay = 'Not provided';
-    if (currentUser.address) {
-        const parts = [
-            currentUser.address.street || '',
-            currentUser.address.city || '',
-            currentUser.address.state || ''
-        ].filter(p => p.trim() !== '');
-        
-        if (parts.length > 0) {
-            addressDisplay = parts.join(', ');
-        }
-    }
-    
-    let memberSince = 'N/A';
-    if (currentUser.createdAt) {
-        memberSince = new Date(currentUser.createdAt).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    }
-    
-    const profileHtml = `
-        <div class="modal" id="profile-modal" style="display: block;">
-            <div class="modal-content" style="max-width: 450px;">
-                <div class="modal-header">
-                    <h2><i class="fas fa-user-circle" style="margin-right: 10px; color: var(--primary);"></i>My Profile</h2>
-                    <button class="close-modal" onclick="closeModal('profile-modal')">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="font-size: 4rem; color: var(--primary);">
-                            <i class="fas fa-user-circle"></i>
-                        </div>
-                        <h3 style="margin: 10px 0 5px; color: var(--text-dark);">${currentUser.name}</h3>
-                        <p style="color: var(--text-medium); margin: 0;">${currentUser.role === 'admin' ? 'Administrator' : 'Customer'}</p>
-                    </div>
-                    
-                    <div style="background: var(--neutral-light); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                        <div style="display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--neutral-medium);">
-                            <i class="fas fa-envelope" style="width: 30px; color: var(--primary);"></i>
-                            <div>
-                                <div style="font-size: 0.85rem; color: var(--text-light);">Email</div>
-                                <div style="font-weight: 500;">${currentUser.email}</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--neutral-medium);">
-                            <i class="fas fa-phone" style="width: 30px; color: var(--primary);"></i>
-                            <div>
-                                <div style="font-size: 0.85rem; color: var(--text-light);">Phone</div>
-                                <div style="font-weight: 500;">${currentUser.phone || 'Not provided'}</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: flex-start; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--neutral-medium);">
-                            <i class="fas fa-map-marker-alt" style="width: 30px; color: var(--primary);"></i>
-                            <div>
-                                <div style="font-size: 0.85rem; color: var(--text-light);">Address</div>
-                                <div style="font-weight: 500;">${addressDisplay}</div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center;">
-                            <i class="fas fa-calendar-alt" style="width: 30px; color: var(--primary);"></i>
-                            <div>
-                                <div style="font-size: 0.85rem; color: var(--text-light);">Member Since</div>
-                                <div style="font-weight: 500;">${memberSince}</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn" onclick="openEditProfileModal()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <i class="fas fa-edit"></i> Edit Profile
-                        </button>
-                        <button class="btn btn-outline" onclick="closeModal('profile-modal')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <i class="fas fa-times"></i> Close
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', profileHtml);
-}
-
-function openEditProfileModal() {
-    if (!currentUser) {
-        showNotification('Please login first', 'warning');
-        return;
-    }
-    
-    closeModal('profile-modal');
-    
-    const existingModal = safeGetElement('edit-profile-modal');
-    if (existingModal) {
-        safeRemoveElement(existingModal);
-    }
-    
-    let addressText = '';
-    if (currentUser.address) {
-        addressText = [
-            currentUser.address.street || '',
-            currentUser.address.city || '',
-            currentUser.address.state || ''
-        ].filter(p => p.trim() !== '').join(', ');
-    }
-    
-    const editHtml = `
-        <div class="modal" id="edit-profile-modal" style="display: block;">
-            <div class="modal-content" style="max-width: 450px;">
-                <div class="modal-header">
-                    <h2><i class="fas fa-edit" style="margin-right: 10px; color: var(--primary);"></i>Edit Profile</h2>
-                    <button class="close-modal" onclick="closeModal('edit-profile-modal')">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form id="edit-profile-form" onsubmit="updateProfile(event)">
-                        <div class="form-group">
-                            <label for="edit-name">
-                                <i class="fas fa-user" style="margin-right: 5px; color: var(--primary);"></i>Full Name
-                            </label>
-                            <input type="text" id="edit-name" class="form-control" value="${currentUser.name || ''}" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="edit-email">
-                                <i class="fas fa-envelope" style="margin-right: 5px; color: var(--primary);"></i>Email
-                            </label>
-                            <input type="email" id="edit-email" class="form-control" value="${currentUser.email || ''}" required>
-                            <small style="color: var(--text-light); font-size: 0.8rem;">Changing email may require verification</small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="edit-phone">
-                                <i class="fas fa-phone" style="margin-right: 5px; color: var(--primary);"></i>Phone
-                            </label>
-                            <input type="tel" id="edit-phone" class="form-control" value="${currentUser.phone || ''}" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="edit-address">
-                                <i class="fas fa-map-marker-alt" style="margin-right: 5px; color: var(--primary);"></i>Address
-                            </label>
-                            <input type="text" id="edit-address" class="form-control" value="${addressText}" placeholder="Street, City, State">
-                            <small style="color: var(--text-light); font-size: 0.8rem;">Format: Street, City, State (e.g., 23 Allen Avenue, Ikeja, Lagos)</small>
-                        </div>
-                        
-                        <div style="display: flex; gap: 10px; margin-top: 25px;">
-                            <button type="submit" class="btn" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                <i class="fas fa-save"></i> Save Changes
-                            </button>
-                            <button type="button" class="btn btn-outline" onclick="closeModal('edit-profile-modal')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                <i class="fas fa-times"></i> Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', editHtml);
-}
-
-async function updateProfile(event) {
-    event.preventDefault();
-    
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-    submitBtn.disabled = true;
-    
-    const name = document.getElementById('edit-name').value.trim();
-    const email = document.getElementById('edit-email').value.trim();
-    const phone = document.getElementById('edit-phone').value.trim();
-    const addressText = document.getElementById('edit-address').value.trim();
-    
-    if (!name || !email || !phone) {
-        showNotification('Please fill in all required fields', 'error');
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        return;
-    }
-    
-    const addressParts = addressText.split(',').map(p => p.trim());
-    const address = {
-        street: addressParts[0] || '',
-        city: addressParts[1] || '',
-        state: addressParts[2] || ''
-    };
-    
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ name, email, phone, address })
+        const response = await fetch(`${API_BASE_URL}/quick-orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, details })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            currentUser = data.user;
-            updateAuthUI(true);
-            closeModal('edit-profile-modal');
-            showNotification('Profile updated successfully!', 'success');
-            setTimeout(() => {
-                viewProfile();
-            }, 500);
+            showNotification('Order request submitted! We will contact you shortly.', 'success');
+            
+            // Clear form
+            document.getElementById('quick-order-name').value = '';
+            document.getElementById('quick-order-phone').value = '';
+            document.getElementById('quick-order-details').value = '';
+            
+            closeQuickOrder();
         } else {
-            showNotification(data.message || 'Update failed', 'error');
+            showNotification(data.message || 'Failed to submit', 'error');
         }
     } catch (error) {
-        console.error('Update error:', error);
-        showNotification('Error updating profile. Please try again.', 'error');
-    } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        console.error('Quick order error:', error);
+        showNotification('Error submitting order', 'error');
     }
 }
 
-// ==================== SOCIAL SHARING FUNCTIONS ====================
-
-function shareOnFacebook(url, text) {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
-}
-
-function shareOnTwitter(url, text) {
-    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
-}
-
-function shareOnWhatsApp(url, text) {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
-}
-
-// ==================== ANALYTICS FUNCTIONS ====================
-
-function trackPageView(pageName) {
-    if (typeof gtag !== 'undefined') {
-        gtag('event', 'page_view', {
-            page_title: pageName,
-            page_location: window.location.href,
-            page_path: window.location.pathname
+// ==================== NEWSLETTER SUBSCRIPTION ====================
+async function subscribeNewsletter(email) {
+    if (!email) {
+        showNotification('Please enter your email address', 'error');
+        return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification('Please enter a valid email address', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/newsletter/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
         });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Thanks for subscribing! 🎉', 'success');
+            // Clear the input
+            const emailInput = document.querySelector('.newsletter-form input');
+            if (emailInput) emailInput.value = '';
+        } else {
+            showNotification(data.message || 'Subscription failed', 'error');
+        }
+    } catch (error) {
+        console.error('Newsletter error:', error);
+        showNotification('Error subscribing. Please try again later.', 'error');
     }
 }
 
-function trackAddToCart(product) {
-    if (typeof gtag !== 'undefined') {
-        gtag('event', 'add_to_cart', {
-            currency: 'NGN',
-            value: product.price,
-            items: [{
-                item_id: product.id,
-                item_name: product.name,
-                price: product.price,
-                quantity: product.quantity || 1
-            }]
-        });
-    }
-}
-
-function trackPurchase(order) {
-    if (typeof gtag !== 'undefined') {
-        gtag('event', 'purchase', {
-            transaction_id: order.id,
-            value: order.total,
-            currency: 'NGN',
-            items: order.items.map(item => ({
-                item_id: item.id,
-                item_name: item.name,
-                price: item.price,
-                quantity: item.quantity
-            }))
-        });
-    }
-}
-
-// ==================== EVENT LISTENERS ====================
-
+// ==================== UPDATE EVENT LISTENERS ====================
 function setupEventListeners() {
     const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
     const nav = document.querySelector('nav');
@@ -2710,14 +2434,18 @@ function setupEventListeners() {
         });
     }
     
+    // Enhanced newsletter button handler
     const newsletterBtn = document.querySelector('.newsletter-form button');
     if (newsletterBtn) {
-        newsletterBtn.addEventListener('click', function(e) {
+        // Remove existing event listeners by cloning
+        const newBtn = newsletterBtn.cloneNode(true);
+        newsletterBtn.parentNode.replaceChild(newBtn, newsletterBtn);
+        
+        newBtn.addEventListener('click', function(e) {
             e.preventDefault();
             const emailInput = document.querySelector('.newsletter-form input');
             if (emailInput && emailInput.value) {
-                showNotification('Thank you for subscribing to our newsletter!', 'success');
-                emailInput.value = '';
+                subscribeNewsletter(emailInput.value);
             } else {
                 showNotification('Please enter your email address', 'error');
             }
@@ -2788,6 +2516,7 @@ window.showOrderModal = showOrderModal;
 window.showSubscriptionModal = showSubscriptionModal;
 window.closeQuickOrder = closeQuickOrder;
 window.submitQuickOrder = submitQuickOrder;
+window.subscribeNewsletter = subscribeNewsletter;
 window.filterProducts = filterProducts;
 window.filterCategory = filterCategory;
 window.filterByPrice = filterByPrice;
