@@ -106,24 +106,58 @@ async function loadDashboardStats() {
         console.log('Dashboard stats:', data);
         
         if (data.success) {
+            // Update with API data
             document.getElementById('total-products').textContent = data.stats.totalProducts || 0;
-            document.getElementById('total-categories').textContent = categories.length || 0;
             document.getElementById('total-orders').textContent = data.stats.totalOrders || 0;
             document.getElementById('total-users').textContent = data.stats.totalUsers || 0;
+            
+            // Categories count from local data
+            document.getElementById('total-categories').textContent = categories.length || 0;
+            
+            // Newsletter count from local data
             document.getElementById('total-newsletter').textContent = newsletter.length || 0;
+            
+            // Quick orders count from local data
             document.getElementById('total-quick-orders').textContent = quickOrders.length || 0;
         }
     } catch (error) {
         console.error('Error loading stats:', error);
+        // Fallback to local data if API fails
+        updateDashboardStats();
     }
+}
+
+// ==================== UPDATE DASHBOARD STATS ====================
+function updateDashboardStats() {
+    console.log('📊 Updating dashboard stats...');
+    
+    // Get all stat elements
+    const totalProductsEl = document.getElementById('total-products');
+    const totalCategoriesEl = document.getElementById('total-categories');
+    const totalOrdersEl = document.getElementById('total-orders');
+    const totalUsersEl = document.getElementById('total-users');
+    const totalNewsletterEl = document.getElementById('total-newsletter');
+    const totalQuickOrdersEl = document.getElementById('total-quick-orders');
+    
+    // Update with current data
+    if (totalProductsEl) totalProductsEl.textContent = products.length || 0;
+    if (totalCategoriesEl) totalCategoriesEl.textContent = categories.length || 0;
+    if (totalOrdersEl) totalOrdersEl.textContent = orders.length || 0;
+    if (totalUsersEl) totalUsersEl.textContent = users.length || 0;
+    if (totalNewsletterEl) totalNewsletterEl.textContent = newsletter.length || 0;
+    if (totalQuickOrdersEl) totalQuickOrdersEl.textContent = quickOrders.length || 0;
+    
+    console.log('✅ Dashboard stats updated');
 }
 
 // ==================== NEWSLETTER MANAGEMENT ====================
 
 async function loadNewsletter() {
     console.log('Loading newsletter subscribers...');
+    const tbody = document.getElementById('newsletter-table-body');
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/newsletter`, {
+        const response = await fetch(`${API_BASE_URL}/admin/newsletter`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
@@ -145,7 +179,6 @@ async function loadNewsletter() {
     } catch (error) {
         console.error('Error loading newsletter:', error);
         
-        const tbody = document.getElementById('newsletter-table-body');
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
@@ -248,8 +281,10 @@ function sendEmailToSubscriber(subId) {
 
 async function loadQuickOrders() {
     console.log('Loading quick orders...');
+    const tbody = document.getElementById('quick-orders-table-body');
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/quick-orders`, {
+        const response = await fetch(`${API_BASE_URL}/admin/quick-orders`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
@@ -271,7 +306,6 @@ async function loadQuickOrders() {
     } catch (error) {
         console.error('Error loading quick orders:', error);
         
-        const tbody = document.getElementById('quick-orders-table-body');
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
@@ -440,6 +474,7 @@ async function loadProducts() {
             products = data.products || [];
             console.log('Products loaded:', products.length);
             displayProducts();
+            updateDashboardStats();
             
             // Refresh categories in modal if it's open
             if (document.getElementById('product-modal').style.display === 'block') {
@@ -874,6 +909,7 @@ async function loadCategories() {
             categories = data.categories || [];
             console.log('Categories loaded:', categories.length);
             displayCategories();
+            updateDashboardStats();
         } else {
             console.error('Failed to load categories:', data.message);
             showNotification('Failed to load categories: ' + (data.message || 'Unknown error'), 'error');
@@ -1003,6 +1039,7 @@ async function loadOrders() {
         if (data.success) {
             orders = data.orders;
             displayOrders();
+            updateDashboardStats();
         }
     } catch (error) {
         console.error('Error loading orders:', error);
@@ -1152,7 +1189,7 @@ async function loadUsers() {
         if (data.success) {
             users = data.users || [];
             displayUsers();
-            loadDashboardStats();
+            updateDashboardStats();
         } else {
             console.error('Failed to load users:', data.message);
             showNotification('Failed to load users', 'error');
