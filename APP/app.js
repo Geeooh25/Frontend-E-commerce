@@ -1636,14 +1636,30 @@ function displayComboInWishlist(comboId) {
         </div>
     `;
 }
-
-// Helper for displaying products in wishlist - UPDATED WITH FIELD MAPPINGS
+// Helper for displaying products in wishlist - FIXED VERSION
 function displayProductInWishlist(product) {
-    // Safely get product properties
-    const productId = product._id || product.id || product.productId;
-    const productName = product.name || product.product_name || product.title || product.productName || 'Product';
-    const productPrice = product.price || product.product_price || product.Price || 0;
-    const productImage = product.image || product.image_url || product.img || product.Image || '';
+    // Handle both object and string cases
+    let productId, productName, productPrice, productImage;
+    
+    if (typeof product === 'string') {
+        // This is a combo ID string
+        productId = product;
+        productName = product.replace('combo-', '').replace(/-/g, ' ');
+        productPrice = 5000; // Default price
+        productImage = '';
+    } else {
+        // This is a product object
+        productId = product._id || product.id || product.productId;
+        productName = product.name || product.product_name || product.title || product.productName || 'Product';
+        productPrice = product.price || product.product_price || product.Price || 0;
+        productImage = product.image || product.image_url || product.img || product.Image || '';
+    }
+    
+    // Safety check - if no ID, don't render
+    if (!productId) {
+        console.error('Product has no ID:', product);
+        return '';
+    }
     
     // Use data URL fallback
     const fallbackImage = getFallbackImage('product', productName);
@@ -1691,7 +1707,15 @@ async function addToCartFromWishlist(productId) {
 }
 
 async function removeFromWishlist(productId, button) {
+    // Add validation
+    if (!productId) {
+        console.error('removeFromWishlist called with no productId');
+        showNotification('Error: Product ID is missing', 'error');
+        return;
+    }
+    
     try {
+        console.log('Removing from wishlist:', productId);
         const response = await fetch(`${API_BASE_URL}/wishlist/remove/${productId}`, {
             method: 'DELETE',
             headers: {
