@@ -40,7 +40,6 @@ async function getWishlistStatus() {
     }
     return {};
 }
-
 // Single function to create product cards - UPDATED WITH FIELD MAPPINGS
 function createProductCard(product, wishlistStatus) {
     const productCard = document.createElement('div');
@@ -51,11 +50,26 @@ function createProductCard(product, wishlistStatus) {
     const productId = product._id || product.id || product.productId || 'unknown';
     const productName = product.name || product.product_name || product.title || product.productName || 'Product';
     const productPrice = product.price || product.product_price || product.Price || 0;
+    
+    // ===== ADD THIS DEBUG CODE RIGHT HERE =====
+    console.log('🔍 Product:', productName);
+    console.log('🔍 Full product object:', product);
+    console.log('🔍 Checking image fields:');
+    console.log('  - product.image:', product.image);
+    console.log('  - product.image_url:', product.image_url);
+    console.log('  - product.img:', product.img);
+    console.log('  - product.Image:', product.Image);
+    console.log('  - product.secure_url:', product.secure_url);
+    console.log('  - product.url:', product.url);
+    // ===== END DEBUG CODE =====
+    
     const productImage = product.image || product.image_url || product.img || product.Image || '';
     const productCategory = product.category || product.cat || product.category_name || product.Category || '';
     const productDescription = product.description || product.desc || product.details || product.Description || '';
     
     const inWishlist = wishlistStatus[productId] || false;
+    
+    // ... rest of the function continues
     
     let heartButton = '';
     if (currentUser) {
