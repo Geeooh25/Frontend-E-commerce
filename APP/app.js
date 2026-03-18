@@ -1,5 +1,20 @@
 // ==================== UNIFIED WISHLIST FUNCTIONS ====================
 
+// ==================== PERMANENT IMAGE FALLBACK SOLUTION ====================
+const FALLBACK_IMAGES = {
+    product: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23f8f9fa\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%236c757d\' font-family=\'Arial\' font-size=\'24\'%3EProduct%3C/text%3E%3C/svg%3E',
+    combo: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23f8f9fa\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%236c757d\' font-family=\'Arial\' font-size=\'24\'%3ECombo%3C/text%3E%3C/svg%3E',
+    default: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\' viewBox=\'0 0 300 300\'%3E%3Crect width=\'300\' height=\'300\' fill=\'%23f8f9fa\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%236c757d\' font-family=\'Arial\' font-size=\'24\'%3ENo%20Image%3C/text%3E%3C/svg%3E'
+};
+
+function getFallbackImage(type = 'default', text = '') {
+    if (text) {
+        // Create custom fallback with text
+        return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%236c757d' font-family='Arial' font-size='20'%3E${encodeURIComponent(text)}%3C/text%3E%3C/svg%3E`;
+    }
+    return FALLBACK_IMAGES[type] || FALLBACK_IMAGES.default;
+}
+
 // Unified function to get wishlist status
 async function getWishlistStatus() {
     if (!currentUser) return {};
@@ -26,13 +41,20 @@ async function getWishlistStatus() {
     return {};
 }
 
-// Single function to create product cards
+// Single function to create product cards - UPDATED WITH FIELD MAPPINGS
 function createProductCard(product, wishlistStatus) {
     const productCard = document.createElement('div');
     productCard.className = 'product-card';
     productCard.style.position = 'relative';
     
-    const productId = product._id || product.id;
+    // SAFELY get product properties with multiple fallbacks
+    const productId = product._id || product.id || product.productId || 'unknown';
+    const productName = product.name || product.product_name || product.title || product.productName || 'Product';
+    const productPrice = product.price || product.product_price || product.Price || 0;
+    const productImage = product.image || product.image_url || product.img || product.Image || '';
+    const productCategory = product.category || product.cat || product.category_name || product.Category || '';
+    const productDescription = product.description || product.desc || product.details || product.Description || '';
+    
     const inWishlist = wishlistStatus[productId] || false;
     
     let heartButton = '';
@@ -46,15 +68,23 @@ function createProductCard(product, wishlistStatus) {
         `;
     }
     
+    // Use data URL fallback
+    const fallbackImage = getFallbackImage('product', productName);
+    const imageSrc = productImage || fallbackImage;
+    
+    // Safely truncate description
+    const shortDescription = productDescription ? 
+        (productDescription.length > 60 ? productDescription.substring(0, 60) + '...' : productDescription) : '';
+    
     productCard.innerHTML = `
         ${heartButton}
-        <img src="${product.image || 'https://via.placeholder.com/300'}" alt="${product.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+        <img src="${imageSrc}" alt="${productName}" class="product-img" onerror="this.src='${fallbackImage}'">
         <div class="product-info">
-            <span class="product-category">${formatCategory(product.category)}</span>
-            <h3>${product.name}</h3>
-            <p>${product.description ? product.description.substring(0, 60) : ''}${product.description && product.description.length > 60 ? '...' : ''}</p>
+            <span class="product-category">${formatCategory(productCategory)}</span>
+            <h3>${productName}</h3>
+            <p>${shortDescription}</p>
             <div class="product-price">
-                <span class="price">${CURRENCY}${product.price?.toLocaleString() || 0}</span>
+                <span class="price">${CURRENCY}${Number(productPrice).toLocaleString() || 0}</span>
                 <button class="btn" onclick="openProductModal('${productId}')">Add to Cart</button>
             </div>
         </div>
@@ -97,6 +127,12 @@ async function loadProducts() {
         if (data.success) {
             products = data.products;
             console.log('Products loaded from API:', products);
+            
+            // Debug: Log first product structure
+            if (products.length > 0) {
+                console.log('First product structure:', products[0]);
+                console.log('Available fields:', Object.keys(products[0]));
+            }
             
             // Wait a moment for auth to be checked, then display
             setTimeout(() => {
@@ -170,6 +206,116 @@ let selectedDeliveryMethod = 'delivery';
 
 // Product data (will be fetched from API)
 let products = [];
+
+// ==================== MISSING UTILITY FUNCTIONS ====================
+
+// Notification function
+function showNotification(message, type = 'info') {
+    // Check if notification container exists, if not create it
+    let notificationContainer = document.getElementById('notification-container');
+    
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        `;
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : '#2196F3'};
+        color: white;
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 300px;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    // Add icon based on type
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    if (type === 'error') icon = '❌';
+    if (type === 'warning') icon = '⚠️';
+    
+    notification.innerHTML = `
+        <span style="display: flex; align-items: center; gap: 10px;">
+            <span>${icon}</span>
+            <span>${message}</span>
+        </span>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;">&times;</button>
+    `;
+    
+    notificationContainer.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Add CSS animation for notifications
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Social sharing functions
+function shareOnFacebook() {
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent('Beedaht Sweet Treats - Delicious Nigerian Bakery');
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${title}`, '_blank', 'width=600,height=400');
+}
+
+function shareOnTwitter() {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent('Check out Beedaht Sweet Treats for delicious Nigerian pastries and treats! 🍰🥮');
+    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank', 'width=600,height=400');
+}
+
+function shareOnWhatsApp() {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent('Check out Beedaht Sweet Treats for delicious Nigerian pastries and treats!');
+    window.open(`https://wa.me/?text=${text}%20${url}`, '_blank', 'width=600,height=400');
+}
+
+// Analytics tracking functions (placeholder)
+function trackPageView() {
+    console.log('Page view tracked');
+    // Implement your analytics here
+}
+
+function trackAddToCart(product) {
+    console.log('Add to cart tracked:', product);
+    // Implement your analytics here
+}
+
+function trackPurchase(order) {
+    console.log('Purchase tracked:', order);
+    // Implement your analytics here
+}
 
 // ==================== SAFE DOM MANIPULATION HELPER ====================
 function safeInsertBefore(parent, newNode, referenceNode) {
@@ -254,6 +400,349 @@ function checkAuthStatus() {
         });
     } else {
         updateAuthUI(false);
+    }
+}
+
+// ==================== PROFILE FUNCTIONS ====================
+function viewProfile() {
+    if (!currentUser) {
+        showNotification('Please login to view profile', 'warning');
+        openLoginModal();
+        return;
+    }
+    
+    // Format address for display
+    let addressDisplay = 'No address provided';
+    if (currentUser.address) {
+        const parts = [];
+        if (currentUser.address.street) parts.push(currentUser.address.street);
+        if (currentUser.address.city) parts.push(currentUser.address.city);
+        if (currentUser.address.state) parts.push(currentUser.address.state);
+        if (parts.length > 0) addressDisplay = parts.join(', ');
+    }
+    
+    const profileHtml = `
+        <div style="padding: 20px;">
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #FFB88C, #ec4899); display: flex; align-items: center; justify-content: center; margin-right: 20px;">
+                    <span style="color: white; font-size: 32px; font-weight: bold;">${currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}</span>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 5px;">${currentUser.name || 'User'}</h3>
+                    <p style="margin: 0; color: #666;">${currentUser.email || ''}</p>
+                    <p style="margin: 5px 0 0; color: #666;">${currentUser.phone || 'No phone'}</p>
+                </div>
+            </div>
+            <div style="border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                <p><strong>Address:</strong> ${addressDisplay}</p>
+                <p><strong>Member since:</strong> ${currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : 'N/A'}</p>
+            </div>
+            <div style="border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
+                <button class="btn" onclick="openEditProfileModal()" style="width: 100%; margin-bottom: 10px;">Edit Profile</button>
+                <button class="btn btn-outline" onclick="viewMyOrders()" style="width: 100%;">My Orders</button>
+            </div>
+        </div>
+    `;
+    
+    showModal('My Profile', profileHtml);
+}
+
+function openEditProfileModal() {
+    if (!currentUser) {
+        showNotification('Please login to edit profile', 'warning');
+        openLoginModal();
+        return;
+    }
+    
+    // Format current address for display
+    let currentAddress = '';
+    if (currentUser.address) {
+        const parts = [];
+        if (currentUser.address.street) parts.push(currentUser.address.street);
+        if (currentUser.address.city) parts.push(currentUser.address.city);
+        if (currentUser.address.state) parts.push(currentUser.address.state);
+        currentAddress = parts.join(', ');
+    }
+    
+    const editProfileHtml = `
+        <form id="edit-profile-form" onsubmit="updateProfile(event)">
+            <div class="form-group">
+                <label for="edit-name">Full Name</label>
+                <input type="text" id="edit-name" class="form-control" value="${currentUser.name || ''}" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-phone">Phone</label>
+                <input type="tel" id="edit-phone" class="form-control" value="${currentUser.phone || ''}" required>
+            </div>
+            <div class="form-group">
+                <label for="edit-address">Address (Street, City, State)</label>
+                <textarea id="edit-address" class="form-control" rows="3" placeholder="e.g., 123 Main Street, Ikeja, Lagos">${currentAddress}</textarea>
+            </div>
+            <button type="submit" class="btn btn-full-width">Update Profile</button>
+        </form>
+    `;
+    
+    showModal('Edit Profile', editProfileHtml);
+}
+
+async function updateProfile(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('edit-name').value.trim();
+    const phone = document.getElementById('edit-phone').value.trim();
+    const addressText = document.getElementById('edit-address').value.trim();
+    
+    if (!name || !phone) {
+        showNotification('Name and phone are required', 'error');
+        return;
+    }
+    
+    // Parse address
+    const addressParts = addressText.split(',').map(part => part.trim());
+    const address = {
+        street: addressParts[0] || '',
+        city: addressParts[1] || '',
+        state: addressParts[2] || ''
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ name, phone, address })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentUser = data.user;
+            showNotification('Profile updated successfully!', 'success');
+            closeModal('generic-modal');
+            updateAuthUI(true);
+        } else {
+            showNotification(data.message || 'Failed to update profile', 'error');
+        }
+    } catch (error) {
+        console.error('Profile update error:', error);
+        showNotification('Error updating profile. Please try again.', 'error');
+    }
+}
+
+// ==================== UPDATED PAYSTACK FUNCTIONS (FIX CORS) ====================
+
+async function processPaystackPayment(name, email, phone, addressText) {
+    if (cart.length === 0) {
+        showNotification('Your cart is empty!', 'error');
+        return;
+    }
+
+    if (!currentUser) {
+        showNotification('Please login to checkout', 'warning');
+        openLoginModal();
+        return;
+    }
+
+    const addressParts = addressText ? addressText.split(',').map(part => part.trim()) : [];
+    const shippingAddress = {
+        street: addressParts[0] || 'No address provided',
+        city: addressParts[1] || 'Lagos',
+        state: addressParts[2] || 'Lagos',
+        phone: phone || ''
+    };
+
+    const itemsPrice = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    
+    const deliveryMethod = sessionStorage.getItem('deliveryMethod') || 'delivery';
+    let deliveryFee = 0;
+    
+    if (deliveryMethod === 'pickup') {
+        deliveryFee = 0;
+    } else {
+        if (typeof deliveryService !== 'undefined') {
+            const delivery = deliveryService.calculateFee(itemsPrice);
+            deliveryFee = delivery.fee;
+        } else {
+            deliveryFee = DELIVERY_FEE;
+        }
+    }
+    
+    const totalPrice = itemsPrice + deliveryFee;
+
+    const orderItems = cart.map(item => ({
+        product: item.isCombo ? item.productId : item.productId?.toString() || '',
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        addOns: item.addOns || '',
+        isCombo: item.isCombo || false
+    }));
+
+    showNotification('Creating your order...', 'info');
+
+    try {
+        // First create the order
+        const orderResponse = await fetch(`${API_BASE_URL}/orders`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                orderItems,
+                shippingAddress,
+                paymentMethod: 'card',
+                itemsPrice,
+                deliveryPrice: deliveryFee,
+                totalPrice,
+                deliveryMethod: deliveryMethod
+            })
+        });
+
+        const orderData = await orderResponse.json();
+
+        if (orderData.success) {
+            // Initialize payment with Paystack
+            const paymentResponse = await fetch(`${API_BASE_URL}/payments/initialize`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ 
+                    email: currentUser.email, 
+                    amount: totalPrice, 
+                    orderId: orderData.order._id 
+                })
+            });
+
+            const paymentData = await paymentResponse.json();
+
+            if (paymentData.success) {
+                // Use Paystack's inline popup instead of redirect
+                if (paymentData.authorization_url) {
+                    // Check if Paystack is loaded
+                    if (typeof PaystackPop === 'undefined') {
+                        // Load Paystack script dynamically
+                        const script = document.createElement('script');
+                        script.src = 'https://js.paystack.co/v1/inline.js';
+                        script.onload = () => {
+                            initializePaystackInline(paymentData, totalPrice, orderData.order._id);
+                        };
+                        document.head.appendChild(script);
+                    } else {
+                        initializePaystackInline(paymentData, totalPrice, orderData.order._id);
+                    }
+                } else {
+                    showNotification(paymentData.message || 'Payment initialization failed', 'error');
+                }
+            } else {
+                showNotification(paymentData.message || 'Payment initialization failed', 'error');
+            }
+        } else {
+            showNotification(orderData.message || 'Failed to create order', 'error');
+        }
+    } catch (error) {
+        console.error('Checkout error:', error);
+        showNotification('Checkout failed. Please try again.', 'error');
+    }
+}
+
+// Helper function to initialize Paystack inline payment
+function initializePaystackInline(paymentData, amount, orderId) {
+    const handler = PaystackPop.setup({
+        key: paymentData.public_key || 'pk_live_your_public_key', // Your Paystack public key
+        email: currentUser.email,
+        amount: amount * 100, // Convert to kobo
+        ref: paymentData.reference || `ref-${Date.now()}`,
+        metadata: {
+            orderId: orderId,
+            custom_fields: [
+                {
+                    display_name: "Order ID",
+                    variable_name: "order_id",
+                    value: orderId
+                }
+            ]
+        },
+        callback: function(response) {
+            // Payment successful
+            showNotification('Payment successful! Your order has been placed.', 'success');
+            
+            // Clear cart
+            cart = [];
+            updateCartCount();
+            saveCartToStorage();
+            closeModal('checkout-modal');
+            
+            // Verify payment on backend
+            fetch(`${API_BASE_URL}/payments/verify/${response.reference}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Payment verified successfully');
+                }
+            })
+            .catch(err => console.error('Payment verification error:', err));
+        },
+        onClose: function() {
+            showNotification('Payment cancelled. You can complete your order later.', 'info');
+        }
+    });
+    handler.openIframe();
+}
+
+// Update the existing initializePaystackPayment function as a fallback
+async function initializePaystackPayment(amount, email, orderId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/payments/initialize`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ email, amount, orderId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Use inline popup instead of redirect
+            if (typeof PaystackPop !== 'undefined') {
+                const handler = PaystackPop.setup({
+                    key: data.public_key,
+                    email: email,
+                    amount: amount * 100,
+                    ref: data.reference,
+                    callback: function(response) {
+                        showNotification('Payment successful!', 'success');
+                        cart = [];
+                        updateCartCount();
+                        saveCartToStorage();
+                        closeModal('checkout-modal');
+                    },
+                    onClose: function() {
+                        showNotification('Payment cancelled', 'info');
+                    }
+                });
+                handler.openIframe();
+            } else {
+                // Fallback to redirect if inline fails
+                window.location.href = data.authorization_url;
+            }
+        } else {
+            showNotification(data.message || 'Payment initialization failed', 'error');
+        }
+    } catch (error) {
+        console.error('Payment error:', error);
+        showNotification('Payment failed. Please try again.', 'error');
     }
 }
 
@@ -1121,17 +1610,22 @@ function displayComboInWishlist(comboId) {
         comboName.toLowerCase().includes(key)
     )?.[1] || 5000;
     
+    // Create image path with fallback
+    const imagePath = `./IMAGE/${comboName.toUpperCase().replace(/ /g, '_')}.jpg`;
+    // FIXED: Use data URL fallback instead of via.placeholder.com
+    const fallbackImage = getFallbackImage('combo', comboName);
+    
     return `
         <div class="wishlist-item" data-id="${comboId}">
-            <img src="./IMAGE/${comboName.toUpperCase().replace(/ /g, '_')}.jpg" 
+            <img src="${imagePath}" 
                  alt="${comboName}" 
                  style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;"
-                 onerror="this.src='https://via.placeholder.com/200?text=Combo'">
+                 onerror="this.onerror=null; this.src='${fallbackImage}';">
             <h4 style="margin: 10px 0 5px; text-transform: capitalize;">${comboName}</h4>
             <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${price.toLocaleString()}</p>
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
-                        onclick="openComboModal('${comboName}', ${price}, './IMAGE/${comboName.toUpperCase().replace(/ /g, '_')}.jpg')">
+                        onclick="openComboModal('${comboName}', ${price}, '${imagePath}')">
                     <i class="fas fa-eye"></i> View
                 </button>
                 <button class="btn btn-outline" style="padding: 8px;" 
@@ -1143,22 +1637,33 @@ function displayComboInWishlist(comboId) {
     `;
 }
 
-// Helper for displaying products in wishlist
+// Helper for displaying products in wishlist - UPDATED WITH FIELD MAPPINGS
 function displayProductInWishlist(product) {
+    // Safely get product properties
+    const productId = product._id || product.id || product.productId;
+    const productName = product.name || product.product_name || product.title || product.productName || 'Product';
+    const productPrice = product.price || product.product_price || product.Price || 0;
+    const productImage = product.image || product.image_url || product.img || product.Image || '';
+    
+    // Use data URL fallback
+    const fallbackImage = getFallbackImage('product', productName);
+    const imageSrc = productImage || fallbackImage;
+    
     return `
-        <div class="wishlist-item" data-id="${product._id}">
-            <img src="${product.image || 'https://via.placeholder.com/200'}" 
-                 alt="${product.name}" 
-                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
-            <h4 style="margin: 10px 0 5px;">${product.name}</h4>
-            <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${product.price?.toLocaleString() || 0}</p>
+        <div class="wishlist-item" data-id="${productId}">
+            <img src="${imageSrc}" 
+                 alt="${productName}" 
+                 style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;"
+                 onerror="this.onerror=null; this.src='${fallbackImage}';">
+            <h4 style="margin: 10px 0 5px;">${productName}</h4>
+            <p style="color: #ec4899; font-weight: bold; margin-bottom: 10px;">₦${Number(productPrice).toLocaleString()}</p>
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-primary" style="flex: 1; padding: 8px;" 
-                        onclick="addToCartFromWishlist('${product._id}')">
-                    <i class="fas fa-cart-plus"></i>
+                        onclick="addToCartFromWishlist('${productId}')">
+                    <i class="fas fa-cart-plus"></i> Add to Cart
                 </button>
                 <button class="btn btn-outline" style="padding: 8px;" 
-                        onclick="removeFromWishlist('${product._id}', this)">
+                        onclick="removeFromWishlist('${productId}', this)">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -1172,13 +1677,16 @@ async function loadWishlistPage() {
 }
 
 async function addToCartFromWishlist(productId) {
-    const product = products.find(p => p._id === productId || p.id === productId);
+    const product = products.find(p => p._id === productId || p.id === productId || p.productId === productId);
     if (product) {
         currentProduct = product;
         quantity = 1;
         addOnsTotal = 0;
         await addToCart();
         closeModal('wishlist-modal');
+        showNotification(`${product.name || product.productName || 'Product'} added to cart!`, 'success');
+    } else {
+        showNotification('Product not found', 'error');
     }
 }
 
@@ -1194,30 +1702,39 @@ async function removeFromWishlist(productId, button) {
         const data = await response.json();
         
         if (data.success) {
-            const item = button.closest('.wishlist-item');
-            item.remove();
-            showNotification('Removed from wishlist', 'info');
+            // Find and remove the item from DOM
+            const item = button ? button.closest('.wishlist-item') : null;
+            if (item) {
+                item.remove();
+            }
             
+            showNotification('Removed from wishlist', 'info');
             updateWishlistCount();
             
+            // Update wishlist grid if empty
             const grid = document.querySelector('.wishlist-grid');
             if (grid && grid.children.length === 0) {
                 grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">Your wishlist is empty</p>';
             }
             
+            // Refresh product displays
             if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
                 displayAdvancedProducts(products);
                 displayCombosWithWishlist();
             }
+        } else {
+            showNotification(data.message || 'Failed to remove from wishlist', 'error');
         }
     } catch (error) {
         console.error('Error removing from wishlist:', error);
+        showNotification('Error removing from wishlist. Please try again.', 'error');
     }
 }
 
 // Static product data as fallback
 function getStaticProducts() {
+    const fallbackImage = getFallbackImage('product', 'Product');
     return [
         { id: 1, name: "Meat Pie", category: "small-chops", price: 1000, image: "./IMAGE/MEAT PIE.jpg", description: "Flaky pastry filled with seasoned minced meat.", hasAddOns: false },
         { id: 2, name: "Snowcap Doughnut", category: "small-chops", price: 1500, image: "./IMAGE/snowcap doughnut new.jpg", description: "Nigerian ring dough filled with powdered sweet milk.", hasAddOns: false },
@@ -2044,14 +2561,31 @@ async function viewMyOrders() {
 // ==================== MODAL FUNCTIONS ====================
 
 function openProductModal(productId) {
-    const product = products.find(p => p._id == productId || p.id == productId);
+    // Try to find product by different ID fields
+    const product = products.find(p => 
+        p._id == productId || 
+        p.id == productId || 
+        p.productId == productId
+    );
     
     if (!product) {
+        console.error('Product not found with ID:', productId);
         showNotification('Product not found!', 'error');
         return;
     }
     
-    currentProduct = product;
+    // Map fields consistently with fallbacks
+    currentProduct = {
+        _id: product._id || product.id || product.productId,
+        id: product.id || product._id || product.productId,
+        name: product.name || product.product_name || product.title || product.productName || 'Product',
+        price: product.price || product.product_price || product.Price || 0,
+        image: product.image || product.image_url || product.img || product.Image || '',
+        category: product.category || product.cat || product.category_name || product.Category || '',
+        description: product.description || product.desc || product.details || product.Description || '',
+        hasAddOns: product.hasAddOns || false
+    };
+    
     addOnsTotal = 0;
     quantity = 1;
     
@@ -2061,15 +2595,15 @@ function openProductModal(productId) {
     const priceEl = safeGetElement('modal-product-price');
     const qtyEl = safeGetElement('quantity-display');
     
-    if (nameEl) nameEl.textContent = product.name;
-    if (imgEl) imgEl.src = product.image;
-    if (descEl) descEl.textContent = product.description || 'Delicious Nigerian treat';
+    if (nameEl) nameEl.textContent = currentProduct.name;
+    if (imgEl) imgEl.src = currentProduct.image || getFallbackImage('product', currentProduct.name);
+    if (descEl) descEl.textContent = currentProduct.description || 'Delicious Nigerian treat';
     updateProductPriceDisplay();
     if (qtyEl) qtyEl.textContent = quantity;
     
     const addOnsSection = safeGetElement('add-ons-section');
     if (addOnsSection) {
-        if (product.hasAddOns) {
+        if (currentProduct.hasAddOns) {
             addOnsSection.classList.remove('hidden');
             const chicken = document.getElementById('extra-chicken');
             const sauce = document.getElementById('extra-sauce');

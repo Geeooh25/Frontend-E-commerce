@@ -17,6 +17,17 @@
     gtag('js', new Date());
     gtag('config', 'G-XXXXXXXXXX'); 
 </script>
+<!-- Add this to handle placeholder images -->
+<style>
+    img[src*="via.placeholder.com"] {
+        background-color: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 14px;
+    }
+</style>
 <style>
     /* Additional Wishlist Styles */
     .wishlist-btn {
@@ -580,9 +591,11 @@
                     <h3>Newsletter</h3>
                     <p>Subscribe for updates on new products and special offers.</p>
                     <div class="newsletter-form">
-                        <input type="email" placeholder="Your email address">
-                        <button type="button" title="Subscribe to newsletter"><i class="fas fa-paper-plane"></i></button>
-                    </div>
+    <input type="email" id="newsletter-email" placeholder="Your email address">
+    <button type="button" onclick="subscribeNewsletter()">
+        <i class="fas fa-paper-plane"></i>
+    </button>
+</div>
                 </div>
             </div>
             <div class="copyright">
