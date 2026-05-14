@@ -2,7 +2,7 @@
 const CONFIG = {
     API_URL: window.location.hostname === 'localhost' 
         ? 'http://localhost:5000/api' 
-        : 'https://your-backend.onrender.com/api',
+        : 'https://beedaht-backend-e-commerce.onrender.com/api',
     
     CURRENCY: '₦',
     DELIVERY_FEE: 0,

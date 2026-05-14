@@ -165,7 +165,7 @@ async function loadProducts() {
 }
 
 // API Configuration - SINGLE DECLARATION
-const API_BASE_URL = 'https://beedaht-backend-e-commerce.onrender.com'; 
+const API_BASE_URL = 'https://beedaht-backend-e-commerce.onrender.com/api'; 
 const CURRENCY = '₦';
 const DELIVERY_FEE = 1500;
 
