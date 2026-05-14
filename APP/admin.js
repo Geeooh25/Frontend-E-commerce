@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://backend-e-commerce-production-b9b1.up.railway.app/api';
+const API_BASE_URL = 'https://beedaht-backend-e-commerce.onrender.com/api';
 console.log('Admin JS loaded. API URL:', API_BASE_URL);
 
 // State management
