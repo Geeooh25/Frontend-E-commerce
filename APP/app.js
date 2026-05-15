@@ -108,13 +108,29 @@ function createProductCard(product, wishlistStatus) {
 }
 
 // ==================== FIXED DISPLAY PRODUCTS WITH WISHLIST ====================
+let hasRenderedProducts = false;
+let isRendering = false;
+
 async function displayProducts(productsToShow) {
+    // Prevent concurrent renders
+    if (isRendering) {
+        console.log('⏸️ Already rendering, skipping duplicate call...');
+        return;
+    }
+    
+    // Prevent rendering twice
+    if (hasRenderedProducts) {
+        console.log('✅ Products already rendered, skipping duplicate...');
+        return;
+    }
+    
     const container = safeGetElement('products-container');
     if (!container) {
         console.error('Products container not found!');
         return;
     }
     
+    isRendering = true;
     console.log('Displaying products, currentUser:', currentUser ? 'logged in' : 'not logged in');
     
     container.innerHTML = '';
@@ -130,6 +146,10 @@ async function displayProducts(productsToShow) {
     
     // After displaying products, also update combos with wishlist
     displayCombosWithWishlist();
+    
+    // Mark as rendered
+    hasRenderedProducts = true;
+    isRendering = false;
 }
 
 // ==================== FIXED LOAD PRODUCTS ====================
@@ -140,7 +160,7 @@ async function loadProducts() {
         
         if (data.success) {
             products = data.products;
-            console.log('Products loaded from API:', products);
+            console.log('Products loaded from API:', products.length);
             
             // Debug: Log first product structure
             if (products.length > 0) {
@@ -148,19 +168,22 @@ async function loadProducts() {
                 console.log('Available fields:', Object.keys(products[0]));
             }
             
-            // Wait a moment for auth to be checked, then display
-            setTimeout(() => {
+            // Only display if not already rendered
+            if (!hasRenderedProducts) {
+                console.log('🔄 Rendering products for first time');
                 displayProducts(products.slice(0, 8));
                 displayAdvancedProducts(products);
-            }, 500);
+            } else {
+                console.log('✅ Products already rendered, skipping loadProducts display');
+            }
         }
     } catch (error) {
         console.error('Error loading products:', error);
         products = getStaticProducts();
-        setTimeout(() => {
+        if (!hasRenderedProducts) {
             displayProducts(products.slice(0, 8));
             displayAdvancedProducts(products);
-        }, 500);
+        }
     }
 }
 
@@ -397,12 +420,12 @@ function checkAuthStatus() {
                 updateAuthUI(true);
                 updateWishlistCount();
                 
-                // CRITICAL: Refresh products to show wishlist hearts
-                if (products.length > 0) {
-                    displayProducts(products.slice(0, 8));
-                    displayAdvancedProducts(products);
-                    displayCombosWithWishlist();
-                }
+                // duplicate issue fix: only display products if not already rendered
+                // if (products.length > 0) {
+                //     displayProducts(products.slice(0, 8));
+                //     displayAdvancedProducts(products);
+                //     displayCombosWithWishlist();
+                // }
             } else {
                 localStorage.removeItem('token');
                 updateAuthUI(false);
@@ -833,11 +856,11 @@ async function handleGoogleSignIn() {
             
             loadUserCart();
             
-            if (products.length > 0) {
+           // if (products.length > 0) {
                 displayProducts(products.slice(0, 8));
-                displayAdvancedProducts(products);
-                displayCombosWithWishlist();
-            }
+              //  displayAdvancedProducts(products);
+             //   displayCombosWithWishlist();
+           // }
         } else {
             showNotification(data.message || 'Google sign-in failed', 'error');
         }
@@ -1038,11 +1061,11 @@ async function handleLogin(event) {
             
             loadUserCart();
             
-            if (products.length > 0) {
-                displayProducts(products.slice(0, 8));
-                displayAdvancedProducts(products);
-                displayCombosWithWishlist();
-            }
+           // if (products.length > 0) {
+             //   displayProducts(products.slice(0, 8));
+              //  displayAdvancedProducts(products);
+               // displayCombosWithWishlist();
+           // }
         } else {
             showNotification(data.message, 'error');
         }
@@ -1949,20 +1972,30 @@ function updateCartDisplay() {
         
         const cartItemElement = document.createElement('div');
         cartItemElement.className = 'cart-item';
+        cartItemElement.style.display = 'flex';
+        cartItemElement.style.justifyContent = 'space-between';
+        cartItemElement.style.alignItems = 'center';
+        cartItemElement.style.padding = '15px';
+        cartItemElement.style.borderBottom = '1px solid #eee';
+        cartItemElement.style.gap = '15px';
+        
         cartItemElement.innerHTML = `
-            <div class="cart-item-info">
-                <h4>${item.name}</h4>
-                <div class="cart-item-details">
-                    ${item.isCombo ? '<span class="combo-badge">COMBO</span>' : ''}
-                    ${item.addOns ? ` | ${item.addOns}` : ''}
+            <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
+                ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px;" onerror="this.src='https://placehold.co/70x70?text=No+Image'">` : '<div style="width: 70px; height: 70px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-image" style="color: #ccc;"></i></div>'}
+                <div class="cart-item-info" style="flex: 1;">
+                    <h4 style="margin: 0 0 5px; font-size: 16px;">${item.name}</h4>
+                    <div class="cart-item-details" style="font-size: 12px; color: #666;">
+                        ${item.isCombo ? '<span class="combo-badge" style="background: #ff9800; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px;">COMBO</span>' : ''}
+                        ${item.addOns ? `<span>${item.addOns}</span>` : ''}
+                    </div>
+                    <div class="cart-item-price" style="font-weight: bold; color: #ec4899; margin-top: 5px;">${CURRENCY}${itemTotal.toLocaleString()}</div>
                 </div>
-                <div class="cart-item-price">${CURRENCY}${itemTotal.toLocaleString()}</div>
             </div>
-            <div class="cart-item-actions">
-                <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
-                <span>${item.quantity}</span>
-                <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
-                <button class="remove-item" onclick="removeFromCart(${item.id})">
+            <div class="cart-item-actions" style="display: flex; align-items: center; gap: 10px;">
+                <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)" style="width: 30px; height: 30px; border-radius: 5px; border: 1px solid #ddd; background: white; cursor: pointer;">-</button>
+                <span style="min-width: 30px; text-align: center;">${item.quantity}</span>
+                <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)" style="width: 30px; height: 30px; border-radius: 5px; border: 1px solid #ddd; background: white; cursor: pointer;">+</button>
+                <button class="remove-item" onclick="removeFromCart(${item.id})" style="background: none; border: none; color: #ff4444; cursor: pointer; font-size: 18px;">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
