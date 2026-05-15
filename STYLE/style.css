@@ -1565,7 +1565,36 @@
     transition: transform 0.3s ease;
 }
 
-.product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+/* Fix product image sizes for all screen sizes */
+.product-card .product-img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 8px 8px 0 0;
+}
+
+/* For larger screens, constrain the image */
+@media (min-width: 1200px) {
+    .product-card .product-img {
+        height: 280px;
+    }
+}
+
+/* For extra large screens */
+@media (min-width: 1600px) {
+    .product-card .product-img {
+        height: 320px;
+    }
+}
+
+/* Ensure product cards don't stretch too wide */
+.products-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.product-card {
+    max-width: 350px;
+    margin: 0 auto;
+    width: 100%;
 }
